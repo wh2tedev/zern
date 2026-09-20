@@ -1,0 +1,173 @@
+/* ============================================================
+   themes.css - Full UI themes (not just the code colors).
+   Each block overrides the CSS variables defined in :root
+   (style.css) for the ENTIRE interface: activity bar, sidebar,
+   tabs, status bar, borders, hover/selection, etc.
+   Activated by setting data-theme="key" on <body>.
+   ============================================================ */
+
+/* ---------- Dark 2026 (VS Code 2026) - default theme ---------- */
+body[data-theme="dark-2026"] {
+  --vscode-bg: #121314;
+  --vscode-sidebar-bg: #191a1b;
+  --vscode-activitybar-bg: #191a1b;
+  --vscode-activitybar-fg: #ffffff;
+  --vscode-activitybar-inactive: #8b8b8b;
+  --vscode-titlebar-bg: #191a1b;
+  --vscode-tab-bg: #191a1b;
+  --vscode-tab-active-bg: #121314;
+  --vscode-tab-border: #191a1b;
+  --vscode-border: #2b2c2d;
+  --vscode-text: #d4d4d4;
+  --vscode-text-dim: #8b8b8b;
+  --vscode-accent: #0078d4;
+  --vscode-accent-hover: #1a8cd8;
+  --vscode-statusbar-bg: #191a1b;
+  --vscode-statusbar-fg: #d4d4d4;
+  --vscode-hover-bg: #1d3e4b;
+  --vscode-selected-bg: #284a59;
+  --vscode-scrollbar: #4a4a4a;
+}
+
+/* ---------- Dark Modern ---------- */
+body[data-theme="dark-modern"] {
+  --vscode-bg: #1f1f1f;
+  --vscode-sidebar-bg: #181818;
+  --vscode-activitybar-bg: #181818;
+  --vscode-activitybar-fg: #ffffff;
+  --vscode-activitybar-inactive: #9d9d9d;
+  --vscode-titlebar-bg: #181818;
+  --vscode-tab-bg: #181818;
+  --vscode-tab-active-bg: #1f1f1f;
+  --vscode-tab-border: #181818;
+  --vscode-border: #2b2b2b;
+  --vscode-text: #cccccc;
+  --vscode-text-dim: #9d9d9d;
+  --vscode-accent: #0078d4;
+  --vscode-accent-hover: #1a8cd8;
+  --vscode-statusbar-bg: #181818;
+  --vscode-statusbar-fg: #cccccc;
+  --vscode-hover-bg: #2a2d2e;
+  --vscode-selected-bg: #04395e;
+  --vscode-scrollbar: #424242;
+}
+
+/* ---------- Dark+ (classic) ---------- */
+body[data-theme="dark-plus"] {
+  --vscode-bg: #1e1e1e;
+  --vscode-sidebar-bg: #252526;
+  --vscode-activitybar-bg: #333333;
+  --vscode-activitybar-fg: #ffffff;
+  --vscode-activitybar-inactive: #858585;
+  --vscode-titlebar-bg: #3c3c3c;
+  --vscode-tab-bg: #2d2d2d;
+  --vscode-tab-active-bg: #1e1e1e;
+  --vscode-tab-border: #252526;
+  --vscode-border: #3c3c3c;
+  --vscode-text: #cccccc;
+  --vscode-text-dim: #969696;
+  --vscode-accent: #007acc;
+  --vscode-accent-hover: #1177bb;
+  --vscode-statusbar-bg: #007acc;
+  --vscode-statusbar-fg: #ffffff;
+  --vscode-hover-bg: #2a2d2e;
+  --vscode-selected-bg: #37373d;
+  --vscode-scrollbar: #424242;
+}
+
+/* ---------- Light Modern ---------- */
+body[data-theme="light-modern"] {
+  --vscode-bg: #ffffff;
+  --vscode-sidebar-bg: #f3f3f3;
+  --vscode-activitybar-bg: #f8f8f8;
+  --vscode-activitybar-fg: #1f1f1f;
+  --vscode-activitybar-inactive: #6e6e6e;
+  --vscode-titlebar-bg: #f8f8f8;
+  --vscode-tab-bg: #f3f3f3;
+  --vscode-tab-active-bg: #ffffff;
+  --vscode-tab-border: #f3f3f3;
+  --vscode-border: #e5e5e5;
+  --vscode-text: #3b3b3b;
+  --vscode-text-dim: #6e6e6e;
+  --vscode-accent: #0078d4;
+  --vscode-accent-hover: #1a8cd8;
+  --vscode-statusbar-bg: #f8f8f8;
+  --vscode-statusbar-fg: #3b3b3b;
+  --vscode-hover-bg: #e8e8e8;
+  --vscode-selected-bg: #e4e6f1;
+  --vscode-scrollbar: #c1c1c1;
+}
+
+/* ---------- Light+ (classic) ---------- */
+body[data-theme="light-plus"] {
+  --vscode-bg: #ffffff;
+  --vscode-sidebar-bg: #f3f3f3;
+  --vscode-activitybar-bg: #2c2c2c;
+  --vscode-activitybar-fg: #ffffff;
+  --vscode-activitybar-inactive: #858585;
+  --vscode-titlebar-bg: #dddddd;
+  --vscode-tab-bg: #ececec;
+  --vscode-tab-active-bg: #ffffff;
+  --vscode-tab-border: #f3f3f3;
+  --vscode-border: #d4d4d4;
+  --vscode-text: #1e1e1e;
+  --vscode-text-dim: #6e6e6e;
+  --vscode-accent: #007acc;
+  --vscode-accent-hover: #1177bb;
+  --vscode-statusbar-bg: #007acc;
+  --vscode-statusbar-fg: #ffffff;
+  --vscode-hover-bg: #e8e8e8;
+  --vscode-selected-bg: #d6ebff;
+  --vscode-scrollbar: #c1c1c1;
+}
+
+/* ---------- Monokai ---------- */
+body[data-theme="monokai"] {
+  --vscode-bg: #272822;
+  --vscode-sidebar-bg: #1e1f1c;
+  --vscode-activitybar-bg: #1e1f1c;
+  --vscode-activitybar-fg: #f8f8f2;
+  --vscode-activitybar-inactive: #75715e;
+  --vscode-titlebar-bg: #1e1f1c;
+  --vscode-tab-bg: #1e1f1c;
+  --vscode-tab-active-bg: #272822;
+  --vscode-tab-border: #1e1f1c;
+  --vscode-border: #3e3d32;
+  --vscode-text: #f8f8f2;
+  --vscode-text-dim: #75715e;
+  --vscode-accent: #a6e22e;
+  --vscode-accent-hover: #b6f23e;
+  --vscode-statusbar-bg: #414339;
+  --vscode-statusbar-fg: #f8f8f2;
+  --vscode-hover-bg: #3e3d32;
+  --vscode-selected-bg: #49483e;
+  --vscode-scrollbar: #75715e;
+}
+
+body[data-theme="light-modern"],
+body[data-theme="light-plus"] {
+  color-scheme: light;
+}
+
+/* ---------- Purple (Soft) ---------- */
+body[data-theme="purple"] {
+  --vscode-bg: #1e1729;
+  --vscode-sidebar-bg: #1a1523;
+  --vscode-activitybar-bg: #1a1523;
+  --vscode-activitybar-fg: #f0e9fb;
+  --vscode-activitybar-inactive: #8577a3;
+  --vscode-titlebar-bg: #1a1523;
+  --vscode-tab-bg: #1a1523;
+  --vscode-tab-active-bg: #1e1729;
+  --vscode-tab-border: #1a1523;
+  --vscode-border: #332b44;
+  --vscode-text: #e0d6f0;
+  --vscode-text-dim: #9c8fb5;
+  --vscode-accent: #a78bfa;
+  --vscode-accent-hover: #c4b5fd;
+  --vscode-statusbar-bg: #6d28d9;
+  --vscode-statusbar-fg: #f5f0ff;
+  --vscode-hover-bg: #2c2438;
+  --vscode-selected-bg: #3d3151;
+  --vscode-scrollbar: #4a3f61;
+}

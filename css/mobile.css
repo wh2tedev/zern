@@ -1,0 +1,174 @@
+/* ============================================================
+   mobile.css - Phone-only adjustments (<=600px).
+   Everything in this file lives inside a single media query on
+   purpose, so it can never affect desktop or tablet layouts -
+   those keep using style.css / style-additions.css exactly as
+   they were. The existing @media (max-width: 768px) block in
+   style.css is left untouched; this file only kicks in for a
+   narrower band (phones), loaded after everything else so it
+   wins the cascade within that band.
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+  /* ---------- Bigger touch targets everywhere ---------- */
+  :root {
+    --activitybar-width: 56px;
+  }
+  .activity-btn {
+    height: 56px;
+  }
+  .activity-btn .codicon {
+    font-size: 24px !important;
+  }
+
+  /* ---------- Sidebar becomes a full-screen drawer instead of a
+     panel that squeezes the editor - there simply isn't room for
+     both side by side on a phone. It floats above the editor,
+     starting right after the activity bar so that bar stays
+     reachable to switch panels or close the drawer. ---------- */
+  .side-bar {
+    position: fixed !important;
+    top: 0;
+    left: var(--activitybar-width);
+    right: 0;
+    bottom: var(--statusbar-height);
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    z-index: 400;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+  .side-bar.collapsed {
+    width: 0 !important;
+    box-shadow: none;
+  }
+
+  /* Resizing a full-screen drawer makes no sense, and the resizer's
+     drag logic is mouse-only anyway (not touch-friendly). */
+  .sidebar-resizer {
+    display: none !important;
+  }
+
+  /* ---------- Explorer tree: taller rows, bigger icons ---------- */
+  .explorer-row {
+    height: 40px;
+  }
+  .explorer-twisty,
+  .indent-guide {
+    height: 40px;
+  }
+  .explorer-icon .codicon,
+  .explorer-icon .folder-codicon,
+  .file-icon-img {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .explorer-twisty .codicon {
+    font-size: 16px !important;
+  }
+  .explorer-label {
+    font-size: 14px;
+  }
+
+  /* ---------- Side-bar header actions (new file/folder/open/zip) ---------- */
+  .side-bar-actions button {
+    padding: 6px;
+  }
+  .side-bar-actions .codicon {
+    font-size: 18px !important;
+  }
+
+  /* ---------- Hover-only controls: there is no hover on touch, so
+     make them permanently visible instead of invisible. ---------- */
+  .recent-folder-remove,
+  .search-replace-one,
+  .search-replace-file {
+    opacity: 1;
+  }
+  .recent-folder-item,
+  .search-match-row {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  /* ---------- Search panel: bigger inputs, easier to tap ---------- */
+  #search-input,
+  #search-replace-input {
+    padding: 10px 32px 10px 12px;
+    font-size: 14px;
+  }
+  #search-clear,
+  .search-replace-all-btn {
+    padding: 6px;
+  }
+
+  /* ---------- Tabs: taller, easier to hit the close button ---------- */
+  .editor-tab {
+    height: 46px;
+    min-width: 110px;
+  }
+  .tab-close {
+    width: 26px;
+    height: 26px;
+    font-size: 17px;
+  }
+
+  /* ---------- Context menu: bigger rows ---------- */
+  .context-menu {
+    min-width: 220px;
+  }
+  .context-menu-item {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  /* ---------- Settings panel: near full-width instead of a small
+     fixed-width box that leaves awkward gaps on a phone ---------- */
+  .settings-panel {
+    width: calc(100vw - 24px);
+    max-height: 85vh;
+  }
+  .settings-row select,
+  .settings-row input[type="number"] {
+    font-size: 14px;
+    padding: 6px 8px;
+  }
+  .theme-picker {
+    grid-template-columns: 1fr;
+  }
+
+  /* ---------- Toggle switches: bigger thumb ---------- */
+  .switch {
+    width: 44px;
+    height: 26px;
+  }
+  .switch-slider::before {
+    width: 20px;
+    height: 20px;
+  }
+  .switch input:checked + .switch-slider::before {
+    transform: translateX(18px);
+  }
+
+  /* ---------- Toasts: full width with margins instead of a fixed
+     360px box that can run close to the screen edge ---------- */
+  .notification-container {
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    bottom: calc(var(--statusbar-height) + 8px);
+  }
+  .toast {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* ---------- Image preview zoom toolbar ---------- */
+  .image-zoom-btn {
+    padding: 8px;
+  }
+  .image-zoom-btn .codicon {
+    font-size: 17px !important;
+  }
+}

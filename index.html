@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KCode</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style-additions.css">
+<link rel="stylesheet" href="css/themes.css">
+<link rel="stylesheet" href="css/mobile.css">
+<!-- Codicons: the REAL Visual Studio Code icon font -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.45/dist/codicon.css" id="app-codicon-link">
+<!-- JSZip: used to export/import the virtual project as a .zip file -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- Inter: optional UI font, selectable in Settings -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="icon" href="assets/logo/logo.svg" type="image/svg+xml">
+<link rel="alternate icon" href="assets/logo/logo-32.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/logo/logo-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#121314">
+</head>
+<body data-theme="dark-2026">
+
+<div id="app">
+
+  <nav class="activity-bar" id="activity-bar">
+    <button class="activity-btn active" data-view="explorer" title="Explorer (Ctrl+Shift+E)">
+      <i class="codicon codicon-files"></i>
+    </button>
+    <button class="activity-btn" data-view="search" title="Search (Ctrl+Shift+F)">
+      <i class="codicon codicon-search"></i>
+    </button>
+    <div class="activity-spacer"></div>
+    <button class="activity-btn" id="btn-settings" title="Settings">
+      <i class="codicon codicon-settings-gear"></i>
+    </button>
+  </nav>
+
+  <aside class="side-bar" id="side-bar">
+    <div class="sidebar-view" id="view-explorer">
+      <div class="side-bar-header">
+        <span id="explorer-title">Explorer</span>
+        <div class="side-bar-actions">
+          <button id="btn-new-file" title="New File">
+            <i class="codicon codicon-new-file"></i>
+          </button>
+          <button id="btn-new-folder" title="New Folder">
+            <i class="codicon codicon-new-folder"></i>
+          </button>
+          <button id="btn-open-folder" title="Open Folder">
+            <i class="codicon codicon-folder-opened"></i>
+          </button>
+          <button id="btn-export-zip" title="Export Project as ZIP">
+            <i class="codicon codicon-cloud-download"></i>
+          </button>
+          <button id="btn-import-zip" title="Import Project from ZIP">
+            <i class="codicon codicon-cloud-upload"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="side-bar-content">
+        <div id="no-folder-message" class="no-folder-message">
+          <p>No folder has been opened yet.</p>
+          <button id="btn-open-folder-main" class="btn-primary">Open Folder</button>
+          <button id="btn-virtual-fs" class="btn-link">Use the virtual filesystem instead</button>
+
+          <div id="recent-folders-section" class="recent-folders-section" style="display:none;">
+            <p class="recent-folders-title">Recent Folders</p>
+            <ul id="recent-folders-list" class="recent-folders-list"></ul>
+          </div>
+        </div>
+        <div id="explorer-root" class="explorer-root" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-view" id="view-search" style="display:none;">
+      <div class="side-bar-header">
+        <span>Search</span>
+      </div>
+      <div class="side-bar-content search-content">
+        <div class="search-input-wrapper">
+          <input type="text" id="search-input" placeholder="Search across files" autocomplete="off">
+          <button id="search-clear" title="Clear search" style="display:none;">
+            <i class="codicon codicon-close"></i>
+          </button>
+        </div>
+        <div class="search-input-wrapper">
+          <input type="text" id="search-replace-input" placeholder="Replace with..." autocomplete="off">
+          <button id="search-replace-all" class="search-replace-all-btn" title="Replace all matches">
+            <i class="codicon codicon-replace-all"></i>
+          </button>
+        </div>
+        <div id="search-summary" class="search-summary"></div>
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-resizer" id="sidebar-resizer"></div>
+
+  <main class="editor-area">
+    <div class="tabs-bar" id="tabs-bar"></div>
+    <div class="editor-host-wrapper">
+      <div id="editor-host" class="editor-host editor-empty"></div>
+      <div id="image-preview-host" class="image-preview-host"></div>
+      <div class="editor-empty-placeholder" id="editor-empty-placeholder">
+        <img class="placeholder-logo" src="assets/logo/logo.svg" alt="KCode" width="72" height="72">
+        <p>Select a file to start editing</p>
+        <p class="placeholder-hint">
+          <kbd>Ctrl</kbd> + <kbd>S</kbd> Save &nbsp;&nbsp;
+          <kbd>Ctrl</kbd> + <kbd>F</kbd> Find &nbsp;&nbsp;
+          <kbd>Ctrl</kbd> + <kbd>Q</kbd> Command Palette
+        </p>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<footer class="status-bar" id="status-bar">
+  <div class="status-left">
+    <span id="status-fs-mode">Virtual mode</span>
+    <span id="status-modified-count"></span>
+  </div>
+  <div class="status-right">
+    <span id="status-cursor-pos">Ln 1, Col 1</span>
+    <span id="status-language">plaintext</span>
+    <span id="status-autosave">Autosave: ON</span>
+  </div>
+</footer>
+
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-panel">
+    <div class="settings-panel-header">
+      <span>Settings</span>
+      <button id="btn-close-settings"><i class="codicon codicon-close"></i></button>
+    </div>
+    <div class="settings-panel-body">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row settings-row-block">
+          <label>Theme</label>
+          <div id="theme-picker" class="theme-picker"></div>
+        </div>
+        <div class="settings-row">
+          <label for="cfg-ui-font">UI Font</label>
+          <select id="cfg-ui-font">
+            <option value="system">System Default</option>
+            <option value="inter">Inter</option>
+            <option value="mono">Monospace</option>
+            <option value="serif">Serif</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="cfg-font-size">Font Size</label>
+          <input type="number" id="cfg-font-size" min="8" max="40" step="1">
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-minimap">Minimap</label>
+          <label class="switch"><input type="checkbox" id="cfg-minimap"><span class="switch-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Editor</div>
+        <div class="settings-row">
+          <label for="cfg-tab-size">Tab Size</label>
+          <input type="number" id="cfg-tab-size" min="1" max="8" step="1">
+        </div>
+        <div class="settings-row">
+          <label for="cfg-cursor-style">Cursor Style</label>
+          <select id="cfg-cursor-style">
+            <option value="line">Line</option>
+            <option value="block">Block</option>
+            <option value="underline">Underline</option>
+            <option value="line-thin">Line (thin)</option>
+            <option value="block-outline">Block outline</option>
+            <option value="underline-thin">Underline (thin)</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="cfg-line-height">Line Height</label>
+          <input type="number" id="cfg-line-height" min="0" max="60" step="1" title="0 = automatic">
+        </div>
+        <div class="settings-row">
+          <label for="cfg-render-whitespace">Render Whitespace</label>
+          <select id="cfg-render-whitespace">
+            <option value="none">None</option>
+            <option value="boundary">Boundary</option>
+            <option value="selection">Selection</option>
+            <option value="trailing">Trailing</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-word-wrap">Word Wrap</label>
+          <label class="switch"><input type="checkbox" id="cfg-word-wrap"><span class="switch-slider"></span></label>
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-bracket-colorization">Bracket Pair Colorization</label>
+          <label class="switch"><input type="checkbox" id="cfg-bracket-colorization"><span class="switch-slider"></span></label>
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-smooth-scrolling">Smooth Scrolling</label>
+          <label class="switch"><input type="checkbox" id="cfg-smooth-scrolling"><span class="switch-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Behavior</div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-auto-save">Autosave</label>
+          <label class="switch"><input type="checkbox" id="cfg-auto-save"><span class="switch-slider"></span></label>
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-format-on-save">Format on Save</label>
+          <label class="switch"><input type="checkbox" id="cfg-format-on-save"><span class="switch-slider"></span></label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Notifications (toasts), bottom-right -->
+<div id="notification-container" class="notification-container"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
