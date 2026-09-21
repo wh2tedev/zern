@@ -129,6 +129,12 @@
     width: calc(100vw - 24px);
     max-height: 85vh;
   }
+  .quick-open-panel {
+    width: calc(100vw - 24px);
+  }
+  .quick-open-item {
+    padding: 12px 14px;
+  }
   .settings-row select,
   .settings-row input[type="number"] {
     font-size: 14px;

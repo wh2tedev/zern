@@ -331,7 +331,7 @@ async function renderRealFolder(dirHandle, path, parentUl, depth) {
   }
 }
 
-async function openRealFile(fileHandle, path, name) {
+export async function openRealFile(fileHandle, path, name) {
   try {
     const hasPermission = await verifyPermission(fileHandle, true);
     if (!hasPermission) {
@@ -836,7 +836,23 @@ async function deleteEntryByPath(path, type, name) {
   await renderExplorer(explorerContainer);
 }
 
+// File System Access API isn't available in every browser (Firefox and
+// Safari don't support it as of this writing). Detecting this upfront
+// lets us give a clear, actionable message instead of a cryptic
+// "showDirectoryPicker is not a function" crash.
+const SUPPORTS_FILE_SYSTEM_ACCESS = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+
 export async function pickRealDirectory() {
+  if (!SUPPORTS_FILE_SYSTEM_ACCESS) {
+    showToast({
+      type: 'error',
+      title: 'Not supported in this browser',
+      message: 'Opening real folders needs Chrome, Edge, or another Chromium-based browser. You can still use the virtual filesystem.',
+      timeout: 7000,
+    });
+    return false;
+  }
+
   try {
     const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     const granted = await verifyPermission(dirHandle, true);
@@ -847,17 +863,28 @@ export async function pickRealDirectory() {
 
     AppState.rootDirHandle = dirHandle;
     AppState.isRealFS = true;
-    await saveDirectoryHandle(dirHandle);
-    await addRecentFolder(dirHandle);
+
+    // Folder history is a nice-to-have, not critical: if IndexedDB is
+    // unavailable (private/incognito mode, storage disabled, etc.) the
+    // folder should still open normally instead of reporting failure.
+    try {
+      await saveDirectoryHandle(dirHandle);
+      await addRecentFolder(dirHandle);
+    } catch (persistErr) {
+      console.warn('Could not save folder history (IndexedDB unavailable?):', persistErr);
+    }
 
     await renderExplorer(explorerContainer);
     showToast({ type: 'success', message: `Folder "${dirHandle.name}" opened successfully` });
     return true;
   } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error('Error selecting folder:', err);
-      showToast({ type: 'error', message: `Could not open the folder: ${err.message}` });
+    if (err.name === 'AbortError') return false;
+    if (err.name === 'SecurityError') {
+      showToast({ type: 'error', message: 'Opening folders requires a secure context (HTTPS or localhost).' });
+      return false;
     }
+    console.error('Error selecting folder:', err);
+    showToast({ type: 'error', message: `Could not open the folder: ${err.message}` });
     return false;
   }
 }
@@ -879,8 +906,13 @@ export async function openRecentFolder(dirHandle) {
 
     AppState.rootDirHandle = dirHandle;
     AppState.isRealFS = true;
-    await saveDirectoryHandle(dirHandle);
-    await addRecentFolder(dirHandle);
+
+    try {
+      await saveDirectoryHandle(dirHandle);
+      await addRecentFolder(dirHandle);
+    } catch (persistErr) {
+      console.warn('Could not update folder history (IndexedDB unavailable?):', persistErr);
+    }
 
     await renderExplorer(explorerContainer);
     showToast({ type: 'success', message: `Folder "${dirHandle.name}" opened successfully` });

@@ -18,6 +18,7 @@ import { startFileWatcher } from './file-watcher.js';
 import { initSearchPanel, focusSearchInput } from './search.js';
 import { THEMES, THEME_ORDER, resolveInitialTheme } from './themes.js';
 import { exportProjectAsZip, importProjectFromZip } from './project-io.js';
+import { initQuickOpen, openQuickOpen } from './quick-open.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -67,13 +68,23 @@ const els = {
   searchClear: $('#search-clear'),
   searchReplaceInput: $('#search-replace-input'),
   searchReplaceAll: $('#search-replace-all'),
+  quickOpenOverlay: $('#quick-open-overlay'),
+  quickOpenInput: $('#quick-open-input'),
+  quickOpenList: $('#quick-open-list'),
 };
 
 async function bootstrap() {
   loadConfig();
   setExplorerContainer(els.explorerRoot);
+  registerServiceWorker();
 
-  await initEditor({ editorHost: els.editorHost, tabsHost: els.tabsBar, imagePreviewHost: els.imagePreviewHost });
+  try {
+    await initEditor({ editorHost: els.editorHost, tabsHost: els.tabsBar, imagePreviewHost: els.imagePreviewHost });
+  } catch (err) {
+    console.error('Monaco failed to load:', err);
+    showEditorLoadError();
+    return; // don't continue bootstrapping the rest of a half-initialized app
+  }
 
   syncSettingsPanelFromState();
   await tryRestoreSession();
@@ -91,6 +102,12 @@ async function bootstrap() {
     clear: els.searchClear,
     replaceInput: els.searchReplaceInput,
     replaceAll: els.searchReplaceAll,
+  });
+
+  initQuickOpen({
+    overlay: els.quickOpenOverlay,
+    input: els.quickOpenInput,
+    list: els.quickOpenList,
   });
 
   registerAllCommands();
@@ -175,9 +192,14 @@ async function renderRecentFoldersList(recents) {
     removeBtn.innerHTML = '<i class="codicon codicon-close"></i>';
     removeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      await removeRecentFolder(entry.name);
-      const updated = await getRecentFolders();
-      await renderRecentFoldersList(updated);
+      try {
+        await removeRecentFolder(entry.name);
+        const updated = await getRecentFolders();
+        await renderRecentFoldersList(updated);
+      } catch (err) {
+        console.warn('Could not update the recent folders list:', err);
+        showToast({ type: 'error', message: 'Could not update the recent folders list.' });
+      }
     });
 
     li.appendChild(icon);
@@ -231,6 +253,48 @@ function updateFsModeLabel() {
   els.statusFsMode.innerHTML = AppState.isRealFS
     ? '<i class="codicon codicon-folder-opened"></i> Real folder (FS Access)'
     : '<i class="codicon codicon-database"></i> Virtual filesystem';
+}
+
+// Registers the Service Worker (offline app shell caching) and shows
+// a "reload to update" prompt when a new version has been installed
+// in the background - important now that we're versioning releases.
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((registration) => {
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              showToast({
+                type: 'info',
+                message: 'A new version of KCode is ready.',
+                actionLabel: 'Reload',
+                onAction: () => window.location.reload(),
+                timeout: 0,
+              });
+            }
+          });
+        });
+      })
+      .catch((err) => console.warn('Service worker registration failed:', err));
+  });
+}
+
+function showEditorLoadError() {
+  if (!els.editorHost) return;
+  els.editorHost.classList.remove('editor-empty');
+  els.editorHost.innerHTML = `
+    <div class="editor-load-error">
+      <i class="codicon codicon-error"></i>
+      <h2>KCode couldn't load its editor engine</h2>
+      <p>This usually means there's no internet connection and no local copy of Monaco was found (see assets/vendor/monaco-editor/README.md).</p>
+      <button type="button" id="btn-retry-editor-load" class="btn-primary">Retry</button>
+    </div>`;
+  document.getElementById('btn-retry-editor-load')?.addEventListener('click', () => window.location.reload());
 }
 
 // Mirrors real VS Code: the Explorer section header shows the open
@@ -458,6 +522,7 @@ function registerAllCommands() {
   registerAppAction({ id: 'app.project.exportZip', label: 'Project: Export as ZIP', run: () => exportProjectAsZip() });
   registerAppAction({ id: 'app.project.importZip', label: 'Project: Import from ZIP', run: () => els.btnImportZip.click() });
   registerAppAction({ id: 'app.editor.find', label: 'Editor: Find', run: () => AppState.editorInstance && AppState.editorInstance.getAction('actions.find').run() });
+  registerAppAction({ id: 'app.file.quickOpen', label: 'Go to File...', run: () => openQuickOpen() });
   registerAppAction({ id: 'app.view.toggleSidebar', label: 'View: Toggle Sidebar', run: () => els.sideBar.classList.toggle('collapsed') });
   registerAppAction({ id: 'app.view.toggleMinimap', label: 'View: Toggle Minimap', run: () => { els.cfgMinimap.checked = !els.cfgMinimap.checked; els.cfgMinimap.dispatchEvent(new Event('change')); } });
   registerAppAction({ id: 'app.view.toggleWordWrap', label: 'View: Toggle Word Wrap', run: () => { els.cfgWordWrap.checked = !els.cfgWordWrap.checked; els.cfgWordWrap.dispatchEvent(new Event('change')); } });
@@ -485,6 +550,16 @@ document.addEventListener('kcode:file-opened', () => {
   els.sidebarResizer.classList.add('collapsed');
   document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
   setTimeout(() => AppState.editorInstance && AppState.editorInstance.layout(), 240);
+});
+
+// Ctrl+P: "Go to File" (Quick Open). Browsers use Ctrl+P for printing
+// by default, so this needs an explicit preventDefault().
+document.addEventListener('keydown', (e) => {
+  const ctrlOrCmd = e.ctrlKey || e.metaKey;
+  if (ctrlOrCmd && !e.shiftKey && e.key.toLowerCase() === 'p') {
+    e.preventDefault();
+    openQuickOpen();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', bootstrap);
