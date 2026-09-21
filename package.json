@@ -1,0 +1,29 @@
+{
+  "name": "kcode",
+  "version": "0.9.0",
+  "description": "KCode Web Code Editor",
+  "author": "wh2tedev <wh2tedev@example.com>",
+  "main": "main.js",
+  "scripts": {
+    "build:arm64": "electron-builder --linux deb --arm64"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kcode.editor",
+    "productName": "KCode",
+    "files": [
+      "index.html",
+      "css/**/*",
+      "js/**/*",
+      "assets/**/*",
+      "main.js"
+    ],
+    "linux": {
+      "target": ["deb"],
+      "category": "Development"
+    }
+  }
+}
