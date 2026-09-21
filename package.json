@@ -2,6 +2,7 @@
   "name": "kcode",
   "version": "0.9.0",
   "description": "KCode Web Code Editor",
+  "author": "wh2tedev <wh2tedev@example.com>",
   "main": "main.js",
   "scripts": {
     "build:arm64": "electron-builder --linux deb --arm64"
