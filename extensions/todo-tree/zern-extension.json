@@ -1,0 +1,31 @@
+{
+  "id": "zern.todo-tree",
+  "name": "todo-tree",
+  "displayName": "TODO Tree",
+  "publisher": "Zern",
+  "version": "1.0.1",
+  "description": "Finds TODO, FIXME and NOTE comments across your project and lists them in the sidebar.",
+  "icon": "icon.svg",
+  "categories": ["Productivity", "Other"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "contributes": {
+    "commands": [
+      { "command": "todoTree.show", "title": "TODO Tree: Show" },
+      { "command": "todoTree.refresh", "title": "TODO Tree: Refresh" },
+      { "command": "todoTree.scanProject", "title": "TODO Tree: Scan the Whole Project" },
+      { "command": "todoTree.scanFolder", "title": "TODO Tree: Scan This Folder" }
+    ],
+    "menus": {
+      "explorer/context": [{ "command": "todoTree.scanFolder", "when": "folder", "icon": "checklist" }]
+    },
+    "views": [{ "title": "TODO Tree", "description": "Comment tags found in the project, grouped by file" }],
+    "settings": [
+      { "key": "tags", "type": "string", "title": "Tags", "description": "Comma separated words to look for.", "default": "TODO,FIXME,NOTE,HACK,BUG" },
+      { "key": "extensions", "type": "string", "title": "File types", "description": "Comma separated extensions to scan, without the dot.", "default": "js,jsx,mjs,cjs,ts,tsx,html,htm,css,scss,less,json,md,txt,py,rb,go,rs,java,kt,c,h,cpp,hpp,cs,php,sh,yaml,yml,toml,xml,vue,svelte,sql,lua" },
+      { "key": "maxFiles", "type": "number", "title": "Maximum files", "description": "Stops after this many files. GitHub repositories are limited to 40 to avoid hundreds of requests.", "default": 1000, "min": 10, "max": 5000 },
+      { "key": "scanOnSave", "type": "boolean", "title": "Update when saving", "description": "Re-scan a file every time it is saved.", "default": true }
+    ]
+  }
+}

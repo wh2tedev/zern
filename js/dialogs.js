@@ -2,11 +2,9 @@
 // dialogs.js - VS Code-style confirmation modal
 // ============================================================
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
+import { escapeHtml } from './escape.js';
 
-export function confirmDialog(title, message) {
+export function confirmDialog(title, message, { okLabel = 'Delete', danger = true } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
@@ -16,7 +14,7 @@ export function confirmDialog(title, message) {
         <div class="confirm-message">${escapeHtml(message)}</div>
         <div class="confirm-actions">
           <button class="btn-secondary confirm-cancel">Cancel</button>
-          <button class="btn-danger confirm-ok">Delete</button>
+          <button class="${danger ? 'btn-danger' : 'btn-primary'} confirm-ok">${escapeHtml(okLabel)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);

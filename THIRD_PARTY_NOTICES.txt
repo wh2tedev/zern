@@ -1,0 +1,85 @@
+Zern Code - Third-party notices
+
+Zern itself is MIT licensed (see LICENSE). It loads or includes the
+following third-party components.
+
+--------------------------------------------------------------------------
+1. Monaco Editor 0.57.0                                      MIT License
+   Copyright (c) Microsoft Corporation. All rights reserved.
+   https://github.com/microsoft/monaco-editor
+   Monaco bundles other components (language definitions, the TypeScript
+   language service, etc.) under their own licenses. Their notices are in the
+   ThirdPartyNotices.txt that ships with the monaco-editor package:
+   https://github.com/microsoft/monaco-editor/blob/main/ThirdPartyNotices.txt
+   Includes TypeScript, Copyright (c) Microsoft Corporation, Apache License
+   2.0 (https://www.apache.org/licenses/LICENSE-2.0), used for the JavaScript
+   and TypeScript language features. TypeScript is not modified.
+
+2. Codicons (@vscode/codicons)
+   Code: MIT License.  Icon font and icons: Creative Commons Attribution 4.0
+   International (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/
+   Copyright (c) Microsoft Corporation. No changes were made to the icons.
+   https://github.com/microsoft/vscode-codicons
+
+3. JSZip                                                     MIT License
+   (JSZip is dual-licensed MIT or GPL-3.0-or-later; used here under MIT.)
+   Copyright (c) 2009-2016 Stuart Knightley, David Duponchel,
+   Franz Buchinger, Antonio Afonso
+   https://github.com/Stuk/jszip
+
+4. Fonts - SIL Open Font License 1.1 (https://openfontlicense.org)
+   Inter            Copyright (c) 2016 The Inter Project Authors
+                    https://github.com/rsms/inter
+   Lora             Copyright (c) 2011 The Lora Project Authors
+                    https://github.com/cyrealtype/Lora-Cyrillic
+   JetBrains Mono   Copyright (c) 2020 The JetBrains Mono Project Authors
+                    https://github.com/JetBrains/JetBrainsMono
+   The fonts are requested from Google Fonts (fonts.googleapis.com) when the
+   page loads; they are not bundled in this repository. Fonts are not sold on
+   their own and keep their original names.
+
+5. Electron (desktop builds only)                            MIT License
+   Copyright (c) Electron contributors. Copyright (c) 2013-2020 GitHub Inc.
+   Chromium and its dependencies are distributed under their own licenses,
+   included with the desktop installer (LICENSES.chromium.html).
+
+6. Color palettes
+   The Dark+, Light+, Dark Modern and Light Modern themes follow the default
+   themes of Visual Studio Code (MIT License, Copyright (c) Microsoft
+   Corporation).
+   The Nordic theme uses the Nord palette (MIT License, Copyright (c)
+   2016-present Sven Greb), https://www.nordtheme.com
+
+7. Language icons (assets/icons/languages)
+   Logos of the corresponding programming languages and file formats. They are
+   trademarks of their respective owners and are used only to identify file
+   types.
+
+--------------------------------------------------------------------------
+Trademarks
+
+"Visual Studio Code" and "Monaco" are associated with Microsoft Corporation.
+"GitHub" is a trademark of GitHub, Inc. Zern is an independent project and
+is not affiliated with, endorsed by or sponsored by Microsoft or GitHub.
+
+--------------------------------------------------------------------------
+MIT License (applies to the MIT-licensed items above, each with its own
+copyright notice as listed)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -4,16 +4,24 @@
 // real commands in Monaco's Command Palette
 // ============================================================
 
+import { attachEditor as attachEditorHooks, runWillSave } from './extensions/editor-hooks.js';
+import { pickItem } from './quick-pick.js';
+import { defineCommand, undefineCommand, getKey, onChange as onKeybindingChange, toMonacoKeybinding, listCommands, runCommand } from './keybindings.js';
 import {
   AppState, addOpenFile, getOpenFile, removeOpenFile,
   setActiveFile, markFileModified, loadConfig, saveConfig, reorderOpenFiles,
 } from './state.js';
-import { getCachedHandle, updateExplorerModifiedIndicator } from './explorer.js';
-import { verifyPermission, saveVirtualFileSystem } from './db.js';
-import { getLanguageFromExtension } from './fs-utils.js';
+import { getCachedHandle, updateExplorerModifiedIndicator, revealInExplorer, copyEntryPath } from './explorer.js';
+import { verifyPermission, saveVirtualFileSystem, saveWorkspace } from './db.js';
+import { getLanguageFromExtension, normalizePath, findFileByPath } from './fs-utils.js';
+import { ensureNodeContent } from './node-content.js';
 import { setupIntelliSense } from './intellisense.js';
-import { setupDeclarationScanner } from './declaration-scanner.js';
-import { getFileIcon } from './icons.js';
+import { setupDeclarationScanner, setupDefinitionProvider } from './declaration-scanner.js';
+import { getFileIcon, MENU_ICONS } from './icons.js';
+import { showContextMenu } from './context-menu.js';
+import { scheduleSessionSave } from './session.js';
+import { getAutoCloseTag, AUTOCLOSE_MODES } from './html-autoclose.js';
+import { reportSaveFailure } from './safety.js';
 import { showToast } from './notifications.js';
 import { THEMES, resolveInitialTheme } from './themes.js';
 
@@ -21,12 +29,14 @@ import { THEMES, resolveInitialTheme } from './themes.js';
 // to the CDN automatically if that local copy hasn't been downloaded.
 // See assets/vendor/monaco-editor/README.md for how to add it.
 const MONACO_LOCAL_PATH = 'assets/vendor/monaco-editor/min/vs';
-const MONACO_CDN_PATH = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs';
+const MONACO_CDN_PATH = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.57.0/min/vs';
 const VIRTUAL_FS_SAVE_DELAY = 800;
 
 let tabsContainer = null;
 let editorHostEl = null;
 let imagePreviewHostEl = null;
+let diffHostEl = null;
+let diffEditor = null;
 let monacoNS = null;
 let draggedTabPath = null;
 let monacoBasePath = MONACO_CDN_PATH; // resolved once in loadMonacoLoader()
@@ -34,14 +44,24 @@ let monacoBasePath = MONACO_CDN_PATH; // resolved once in loadMonacoLoader()
 // Actions requested to be registered in Monaco while the editor
 // instance doesn't exist yet (they get flushed once it's created).
 const pendingActions = [];
+const liveActions = new Map(); // command id -> { config, disposable } (for re-binding shortcuts)
+
+let monacoSource = 'cdn';
+/** 'local' (bundled copy, works offline) or 'cdn' (online only): shown in Help > About. */
+export const getMonacoSource = () => monacoSource;
 
 async function resolveMonacoBasePath() {
+  if (window.zernDesktop && location.protocol === 'file:') { monacoSource = 'local'; return MONACO_LOCAL_PATH; } // the desktop app ships Monaco; fetch() can't probe file:// reliably
   try {
-    const res = await fetch(`${MONACO_LOCAL_PATH}/loader.js`, { method: 'HEAD' });
-    if (res.ok) return MONACO_LOCAL_PATH;
+    // A plain GET (not HEAD): the service worker answers GETs from its cache, so this also works offline,
+    // and some hosts reject HEAD requests.
+    const res = await fetch(`${MONACO_LOCAL_PATH}/loader.js`);
+    if (res.ok) { monacoSource = 'local'; console.info('[Zern] Editor engine: local copy'); return MONACO_LOCAL_PATH; }
   } catch {
-    // no local copy present (or not served over http/https) - that's fine
+    // no local copy reachable (not served over http/https, or offline without a cached copy)
   }
+  monacoSource = 'cdn';
+  console.info('[Zern] Editor engine: local copy not found, using the CDN (needs internet). See assets/vendor/monaco-editor/README.md');
   return MONACO_CDN_PATH;
 }
 
@@ -54,16 +74,6 @@ function loadMonacoLoader(basePath) {
     script.onerror = () => reject(new Error(`Could not load the Monaco loader from ${basePath}.`));
     document.head.appendChild(script);
   });
-}
-
-// Re-inserts our Codicons <link> at the END of <head>, so its "codicon"
-// @font-face cascades above the one bundled with Monaco. Called right
-// after Monaco loads, and once more shortly after in case Monaco injects
-// additional stylesheets lazily (when the find widget, suggestions,
-// quick command, etc. mount for the first time).
-function reprioritizeAppCodicons() {
-  const link = document.getElementById('app-codicon-link');
-  if (link) document.head.appendChild(link);
 }
 
 // ---------------- VS Code-accurate themes ----------------
@@ -331,12 +341,71 @@ function defineVSCodeThemes(ns) {
       'scrollbarSlider.hoverBackground': '#5a4a75b3',
     },
   });
+  // Nordic: arctic blue-grey palette inspired by the Nord colors
+  // (polar night backgrounds, snow storm text, frost blues/teals for
+  // keywords/types/functions, aurora accents for strings/numbers).
+  // The extra rules after buildTokenRules() fine-tune tokens that the
+  // shared color map would otherwise force to a single color.
+  ns.editor.defineTheme('vscode-nordic', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      ...buildTokenRules({
+        comment: '616E88', keyword: '81A1C1', string: 'A3BE8C', number: 'B48EAD',
+        type: '8FBCBB', function: '88C0D0', variable: 'D8DEE9', variableParam: 'D8DEE9',
+        constant: '81A1C1', tag: '81A1C1', attributeName: '8FBCBB', attributeValue: 'A3BE8C',
+        delimiter: 'ECEFF4', operator: '81A1C1', regexp: 'EBCB8B', annotation: 'D08770', invalid: 'BF616A',
+      }),
+      { token: 'string.escape', foreground: 'EBCB8B' },
+      { token: 'constant.numeric', foreground: 'B48EAD' },
+    ],
+    colors: {
+      'editor.background': '#2e3440',
+      'editor.foreground': '#d8dee9',
+      'editorLineNumber.foreground': '#4c566a',
+      'editorLineNumber.activeForeground': '#d8dee9',
+      'editor.selectionBackground': '#434c5e',
+      'editor.inactiveSelectionBackground': '#3b4252',
+      'editor.selectionHighlightBackground': '#434c5e99',
+      'editor.wordHighlightBackground': '#434c5e99',
+      'editorCursor.foreground': '#d8dee9',
+      'editor.lineHighlightBackground': '#3b4252',
+      'editorIndentGuide.background': '#3b4252',
+      'editorIndentGuide.activeBackground': '#4c566a',
+      'editorWhitespace.foreground': '#434c5e',
+      'editorGutter.background': '#2e3440',
+      'editorBracketMatch.background': '#88c0d033',
+      'editorBracketMatch.border': '#88c0d0',
+      'editorBracketHighlight.foreground1': '#81a1c1',
+      'editorBracketHighlight.foreground2': '#8fbcbb',
+      'editorBracketHighlight.foreground3': '#ebcb8b',
+      'editorBracketHighlight.foreground4': '#b48ead',
+      'editorBracketHighlight.foreground5': '#a3be8c',
+      'editorBracketHighlight.foreground6': '#d08770',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#bf616a',
+      'editorWidget.background': '#272c36',
+      'editorWidget.border': '#3b4252',
+      'editorSuggestWidget.background': '#272c36',
+      'editorSuggestWidget.border': '#3b4252',
+      'editorSuggestWidget.selectedBackground': '#434c5e',
+      'editorSuggestWidget.highlightForeground': '#88c0d0',
+      'input.background': '#3b4252',
+      'input.border': '#4c566a',
+      'list.hoverBackground': '#3b4252',
+      'list.activeSelectionBackground': '#434c5e',
+      'editor.findMatchBackground': '#5e81ac80',
+      'editor.findMatchHighlightBackground': '#5e81ac40',
+      'scrollbarSlider.background': '#4c566a66',
+      'scrollbarSlider.hoverBackground': '#5a657fb3',
+    },
+  });
 }
 
 export async function initEditor({ editorHost, tabsHost, imagePreviewHost }) {
   editorHostEl = editorHost;
   tabsContainer = tabsHost;
   imagePreviewHostEl = imagePreviewHost;
+  diffHostEl = document.getElementById('diff-host');
 
   loadConfig();
   monacoBasePath = await resolveMonacoBasePath();
@@ -347,11 +416,11 @@ export async function initEditor({ editorHost, tabsHost, imagePreviewHost }) {
     window.require(['vs/editor/editor.main'], () => { monacoNS = window.monaco; resolve(); }, reject);
   });
 
-  reprioritizeAppCodicons();
 
   defineVSCodeThemes(monacoNS);
-  setupIntelliSense(monacoNS);
+  setupIntelliSense(monacoNS, { semanticValidation: AppState.config.semanticValidation === true });
   setupDeclarationScanner(monacoNS);
+  setupDefinitionProvider(monacoNS);
 
   const cfg = AppState.config;
   AppState.editorInstance = monacoNS.editor.create(editorHostEl, {
@@ -395,10 +464,17 @@ export async function initEditor({ editorHost, tabsHost, imagePreviewHost }) {
     },
   });
 
-  pendingActions.splice(0).forEach(addActionToEditor);
+  pendingActions.splice(0).forEach((entry) => { if (!entry.disposed) mountAction(entry); });
+  attachEditorHooks(AppState.editorInstance); // extension hooks (scroll events)
 
-  setTimeout(reprioritizeAppCodicons, 500);
-  setTimeout(reprioritizeAppCodicons, 2000);
+  registerDefinitionOpener();
+  setupHtmlAutoClose(AppState.editorInstance);
+
+  // Keep the saved session (tabs + cursor/scroll) fresh. Both calls are
+  // debounced inside session.js, so this is cheap while typing/scrolling.
+  AppState.editorInstance.onDidChangeCursorPosition(() => scheduleSessionSave());
+  AppState.editorInstance.onDidScrollChange(() => scheduleSessionSave());
+
 
   setupContentChangeTracking();
   setupKeyboardShortcuts();
@@ -409,58 +485,166 @@ export async function initEditor({ editorHost, tabsHost, imagePreviewHost }) {
   return AppState.editorInstance;
 }
 
+// ---------------- HTML auto-close tags ----------------
+
+// Typing ">" at the end of an opening tag inserts the matching closing tag and
+// leaves the cursor between them. The decision (void elements, comments, quotes,
+// <script>/<style>, PHP blocks...) lives in html-autoclose.js; this is only the glue.
+// onDidType fires for real keystrokes only (never for paste, undo or programmatic
+// edits), after the character is already in the model.
+function setupHtmlAutoClose(editor) {
+  editor.onDidType((typed) => {
+    if (typed !== '>' || AppState.config.autoCloseTags === false) return;
+    autoCloseHtmlTags(editor);
+  });
+}
+
+function autoCloseHtmlTags(editor) {
+  const model = editor.getModel();
+  if (!model) return;
+  const mode = AUTOCLOSE_MODES[model.getLanguageId()];
+  if (!mode) return;
+
+  const selections = editor.getSelections();
+  if (!selections || !selections.length || !selections.every((s) => s.isEmpty())) return;
+
+  const text = model.getValue();
+  const carets = selections.map((s) => s.getPosition())
+    .sort((a, b) => a.lineNumber - b.lineNumber || a.column - b.column);
+
+  // Multi-cursor: every insertion pushes the carets that follow it on the same line to the right.
+  const shiftByLine = new Map();
+  const edits = [];
+  const finalCarets = [];
+
+  for (const pos of carets) {
+    const shift = shiftByLine.get(pos.lineNumber) || 0;
+    const gt = model.getOffsetAt(pos) - 1; // index of the ">" just typed
+    const closing = gt >= 0 && text[gt] === '>' ? getAutoCloseTag(text, gt, mode) : null;
+    if (closing) {
+      edits.push({
+        range: { startLineNumber: pos.lineNumber, startColumn: pos.column, endLineNumber: pos.lineNumber, endColumn: pos.column },
+        text: closing,
+        forceMoveMarkers: false,
+      });
+      shiftByLine.set(pos.lineNumber, shift + closing.length);
+    }
+    // The caret stays right after the ">" (i.e. before the inserted closing tag)
+    finalCarets.push(new monacoNS.Selection(pos.lineNumber, pos.column + shift, pos.lineNumber, pos.column + shift));
+  }
+
+  if (edits.length) editor.executeEdits('html-autoclose', edits, finalCarets);
+}
+
+// ---------------- Go to Definition: jumping between open files ----------------
+
+// When F12 / Ctrl+click lands in ANOTHER open file, Monaco's default
+// behaviour is to just swap the model inside the editor - which would
+// leave our tab bar pointing at the wrong file. This opener takes over
+// for that case so the right tab becomes active; for a definition in the
+// same file it steps aside and lets Monaco do its normal reveal.
+function registerDefinitionOpener() {
+  if (!monacoNS || typeof monacoNS.editor.registerEditorOpener !== 'function') return;
+
+  monacoNS.editor.registerEditorOpener({
+    openCodeEditor(source, resource, selectionOrPosition) {
+      if (source !== AppState.editorInstance) return false; // e.g. the peek widget's embedded editor
+
+      const path = normalizePath(resource.path);
+      const target = getOpenFile(path);
+      if (!target || target.isImage || !target.model) return false;
+      if (source.getModel() === target.model) return false;
+
+      activateTab(path);
+
+      const editor = AppState.editorInstance;
+      if (selectionOrPosition && 'startLineNumber' in selectionOrPosition) {
+        editor.setSelection(selectionOrPosition);
+        editor.revealRangeInCenter(selectionOrPosition);
+      } else if (selectionOrPosition) {
+        editor.setPosition(selectionOrPosition);
+        editor.revealPositionInCenter(selectionOrPosition);
+      }
+      return true;
+    },
+  });
+}
+
 // ---------------- Registering real commands in the Command Palette ----------------
 
 // Converts a combo like "Ctrl+S" or "Ctrl+Shift+F" into a real Monaco
 // keybinding (KeyMod.CtrlCmd maps to Ctrl on Win/Linux and Cmd on Mac).
-function buildKeybinding(ns, combo) {
-  if (!combo) return null;
-  const parts = combo.split('+').map((p) => p.trim().toLowerCase());
-  let mod = 0;
-  let keyCode = null;
+const buildKeybinding = toMonacoKeybinding;
 
-  for (const part of parts) {
-    if (part === 'ctrl' || part === 'cmd') mod |= ns.KeyMod.CtrlCmd;
-    else if (part === 'shift') mod |= ns.KeyMod.Shift;
-    else if (part === 'alt') mod |= ns.KeyMod.Alt;
-    else keyCode = ns.KeyCode[`Key${part.toUpperCase()}`] ?? null;
-  }
-
-  return keyCode != null ? (mod | keyCode) : null;
-}
-
-function addActionToEditor({ id, label, keybinding, run }) {
+function addActionToEditor({ id, label, keybinding, run, contextMenu }) {
   const keybindings = [];
   const built = buildKeybinding(monacoNS, keybinding);
   if (built != null) keybindings.push(built);
 
-  AppState.editorInstance.addAction({
-    id,
-    label,
-    keybindings,
-    run: () => run(),
-  });
+  const options = { id, label, keybindings, run: () => run() };
+  if (contextMenu) { // shown in the editor's right-click menu (extensions: contributes.menus["editor/context"])
+    options.contextMenuGroupId = contextMenu.group || '9_zern';
+    options.contextMenuOrder = contextMenu.order != null ? contextMenu.order : 1;
+    if (contextMenu.when) options.precondition = contextMenu.when;
+  }
+  return AppState.editorInstance.addAction(options);
 }
 
 /**
  * Registers an app command as a REAL Monaco action, visible and
- * runnable from its native Command Palette (Ctrl+Q).
- * @param {{id: string, label: string, keybinding?: string, run: () => void}} config
+ * runnable from its native Command Palette (Ctrl+Q), and in the shared
+ * keybinding registry so its shortcut can be customized.
+ * @param {{id: string, label: string, keybinding?: string, run: () => void, global?: boolean, when?: () => boolean}} config
+ *   global: also run the shortcut when the editor does not have focus.
+ * @returns {{dispose: () => void}}
  */
 export function registerAppAction(config) {
-  if (AppState.editorInstance && monacoNS) {
-    addActionToEditor(config);
-  } else {
-    pendingActions.push(config);
-  }
+  defineCommand(config.id, { label: config.label, key: config.keybinding || null, run: config.run, global: !!config.global, when: config.when || null });
+  const entry = { config, disposable: null, disposed: false };
+  liveActions.set(config.id, entry);
+  if (AppState.editorInstance && monacoNS) mountAction(entry);
+  else pendingActions.push(entry);
+  return {
+    dispose() {
+      entry.disposed = true;
+      if (entry.disposable) { entry.disposable.dispose(); entry.disposable = null; }
+      if (liveActions.get(config.id) === entry) { liveActions.delete(config.id); undefineCommand(config.id); }
+    },
+  };
 }
+
+function mountAction(entry) {
+  entry.disposable = addActionToEditor({ ...entry.config, keybinding: getKey(entry.config.id) });
+}
+
+// When a shortcut changes (shortcuts editor / settings.json), re-bind the Monaco action.
+onKeybindingChange((id) => {
+  const entries = id ? [liveActions.get(id)] : [...liveActions.values()];
+  for (const entry of entries) {
+    if (!entry || !entry.disposable) continue;
+    entry.disposable.dispose();
+    mountAction(entry);
+  }
+});
 
 /** Opens Monaco's native Command Palette (used by the Ctrl+Q shortcut). */
 export function openCommandPalette() {
-  if (!AppState.editorInstance) return;
-  AppState.editorInstance.focus();
-  const action = AppState.editorInstance.getAction('editor.action.quickCommand');
-  if (action) action.run();
+  const ed = AppState.editorInstance;
+  const hasDocument = !!(ed && AppState.activeFilePath && ed.getModel());
+  if (hasDocument) {
+    ed.focus();
+    const action = ed.getAction('editor.action.quickCommand');
+    if (action) { action.run(); return; }
+  }
+  openFallbackPalette(); // Monaco's palette needs an open document: with none, list Zern's own commands
+}
+
+async function openFallbackPalette() {
+  const items = listCommands()
+    .filter((c) => c.id !== 'app.commandPalette')
+    .map((c) => ({ label: c.label, description: c.key || '', value: c.id }));
+  const id = await pickItem({ placeholder: 'Type the name of a command', items });
+  if (id) runCommand(id);
 }
 
 // ---------------- Virtual filesystem autosave ----------------
@@ -474,16 +658,62 @@ export function scheduleVirtualFsSave() {
   if (AppState.isRealFS) return;
   clearTimeout(AppState.virtualFsSaveTimer);
   AppState.virtualFsSaveTimer = setTimeout(() => {
-    saveVirtualFileSystem(AppState.fileSystem).catch((err) => {
-      console.warn('Could not persist the virtual project:', err);
-    });
+    // A GitHub repository keeps its own record (tree + commit info + uncommitted changes)
+    // so the scratch virtual project is never overwritten by it.
+    const save = AppState.github
+      ? saveWorkspace(AppState.github.id, { tree: AppState.fileSystem, meta: AppState.github })
+      : saveVirtualFileSystem(AppState.fileSystem);
+    save.catch(reportSaveFailure);
   }, VIRTUAL_FS_SAVE_DELAY);
+  // Source Control listens to this to refresh the list of changed files
+  document.dispatchEvent(new CustomEvent('zern:workspace-changed'));
 }
 
 // ---------------- Tabs ----------------
 
+/**
+ * Opens a document that is not a file on disk (for example settings.json) as a regular editor tab.
+ * `save(text)` validates/applies it and resolves to true on success; it is never written to the file system.
+ * `refresh()` returns fresh text, used when the tab is shown again while it has no unsaved edits.
+ */
+export function openCustomDocument({ path, name, text, language, save, refresh }) {
+  let file = getOpenFile(path);
+  if (!file) {
+    const uri = monacoNS.Uri.parse(path);
+    const stale = monacoNS.editor.getModel(uri);
+    if (stale) stale.dispose();
+    const model = monacoNS.editor.createModel(text, language, uri);
+    model.onDidChangeContent(() => handleModelChange(path));
+    addOpenFile(path, { name, content: text, model, language, isVirtual: true, modified: false });
+    file = getOpenFile(path);
+    file.custom = { save, refresh };
+  }
+  activateTab(path);
+}
+
+async function saveCustomDocument(path, file) {
+  const content = file.model.getValue();
+  const ok = await file.custom.save(content);
+  if (ok) {
+    file.content = content;
+    file.savedContent = content;
+    markFileModified(path, false);
+    updateTabModifiedIndicator(path, false);
+  }
+  return !!ok;
+}
+
+function refreshCustomDocument(file) {
+  if (!file.custom || !file.custom.refresh || file.modified) return;
+  const text = file.custom.refresh();
+  if (typeof text === 'string' && text !== file.model.getValue()) {
+    file.savedContent = text; file.content = text;
+    file.model.setValue(text);
+  }
+}
+
 export function openFileInEditor(fileInfo) {
-  const { path, name, content, language, handle, isVirtual, lastModified, isImage, imageUrl } = fileInfo;
+  const { path, name, content, language, handle, isVirtual, lastModified, isImage, imageUrl, activate } = fileInfo;
   let file = getOpenFile(path);
 
   if (!file) {
@@ -506,12 +736,16 @@ export function openFileInEditor(fileInfo) {
     file.lastKnownModified = lastModified ?? null;
   }
 
+  // `activate: false` lets the session restore open many tabs in a row
+  // without flashing through each one (it activates the right one at the end).
+  if (activate === false) return;
   activateTab(path);
 }
 
 function handleModelChange(path) {
   const file = getOpenFile(path);
   if (!file) return;
+  document.dispatchEvent(new CustomEvent('zern:content-changed', { detail: { path } })); // extensions (e.g. live preview) listen to this
 
   const currentValue = file.model.getValue();
   const isDirty = currentValue !== file.savedContent;
@@ -522,7 +756,7 @@ function handleModelChange(path) {
     updateExplorerModifiedIndicator(path, isDirty);
   }
 
-  if (isDirty && AppState.config.autoSave) {
+  if (isDirty && AppState.config.autoSave && !file.custom) { // settings.json is applied on Ctrl+S only, never half-typed
     clearTimeout(AppState.autoSaveTimer);
     AppState.autoSaveTimer = setTimeout(() => saveFile(AppState.activeFilePath), AppState.config.autoSaveDelay);
   }
@@ -534,6 +768,10 @@ function renderTabs() {
   for (const [path, file] of AppState.openFiles.entries()) {
     tabsContainer.appendChild(buildTabElement(path, file));
   }
+  // Every tab change (open, close, switch, reorder, rename) ends here.
+  scheduleSessionSave();
+  renderBreadcrumbs();
+  document.dispatchEvent(new CustomEvent('zern:tabs-changed'));
 }
 
 function buildTabElement(path, file) {
@@ -550,17 +788,19 @@ function buildTabElement(path, file) {
 
   const label = document.createElement('span');
   label.className = 'tab-label';
-  label.textContent = (file.modified ? '\u25CF ' : '') + file.name;
+  label.textContent = file.isDiff ? `${file.name} ${file.diffSuffix || ''}`.trim() : file.name;
   tab.appendChild(label);
+  tab.classList.toggle('modified', !!file.modified);
 
   const closeBtn = document.createElement('span');
   closeBtn.className = 'tab-close';
-  closeBtn.innerHTML = '<i class="codicon codicon-close"></i>';
+  closeBtn.innerHTML = '<i class="zi zi-close"></i><i class="zi zi-circle-filled tab-dirty-dot"></i>';
   closeBtn.title = 'Close';
   tab.appendChild(closeBtn);
 
   tab.addEventListener('click', (e) => { if (e.target !== closeBtn && !closeBtn.contains(e.target)) activateTab(path); });
   closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeTab(path); });
+  tab.addEventListener('contextmenu', (e) => onTabContextMenu(e, path));
 
   tab.addEventListener('dragstart', (e) => {
     draggedTabPath = path;
@@ -630,21 +870,134 @@ function setupTabDragAndDrop() {
   });
 }
 
+// ---------------- Breadcrumbs (path of the active file, like VS Code) ----------------
+
+function renderBreadcrumbs() {
+  const host = document.getElementById('breadcrumbs');
+  if (!host) return;
+  const file = AppState.activeFilePath ? getOpenFile(AppState.activeFilePath) : null;
+  if (!file) { host.hidden = true; host.innerHTML = ''; return; }
+
+  const shownPath = file.custom ? `/${file.name}` : (file.isDiff ? file.targetPath : AppState.activeFilePath);
+  const parts = normalizePath(shownPath).split('/').filter(Boolean);
+  host.innerHTML = '';
+  let acc = '';
+  parts.forEach((part, i) => {
+    acc += `/${part}`;
+    const last = i === parts.length - 1;
+    if (i > 0) {
+      const sep = document.createElement('i');
+      sep.className = 'zi zi-chevron-right crumb-sep';
+      host.appendChild(sep);
+    }
+    const crumb = document.createElement('span');
+    crumb.className = 'crumb' + (last ? ' crumb-last' : '');
+    if (last) {
+      const icon = document.createElement('span');
+      icon.className = 'crumb-icon';
+      icon.innerHTML = getFileIcon(file.name);
+      crumb.appendChild(icon);
+    }
+    crumb.appendChild(document.createTextNode(part));
+    const target = acc;
+    if (!file.custom) crumb.addEventListener('click', () => revealInExplorer(target));
+    host.appendChild(crumb);
+  });
+  host.hidden = false;
+  host.scrollLeft = host.scrollWidth;
+}
+
+// ---------------- Tab context menu ----------------
+
+function onTabContextMenu(e, tabKey) {
+  e.preventDefault();
+  const tabFile = getOpenFile(tabKey);
+  const path = tabFile && tabFile.isDiff ? tabFile.targetPath : tabKey; // diff tabs point at their file
+  const closePath = tabKey;
+
+  const order = Array.from(AppState.openFiles.keys());
+  const index = order.indexOf(path);
+  const others = order.filter((p) => p !== path);
+  const toTheRight = order.slice(index + 1);
+  const saved = order.filter((p) => !getOpenFile(p)?.modified);
+
+  showContextMenu(e.clientX, e.clientY, [
+    { label: 'Close', icon: MENU_ICONS.close, keybinding: 'Ctrl+W', action: () => closeTab(closePath) },
+    { label: 'Close Others', icon: MENU_ICONS.close, disabled: !others.length, action: () => closeMany(others) },
+    { label: 'Close to the Right', icon: MENU_ICONS.close, disabled: !toTheRight.length, action: () => closeMany(toTheRight) },
+    { label: 'Close Saved', icon: MENU_ICONS.close, disabled: !saved.length, action: () => closeMany(saved) },
+    { label: 'Close All', icon: MENU_ICONS.closeAll, action: () => closeMany(order) },
+    { separator: true },
+    { label: 'Copy Path', icon: MENU_ICONS.copy, action: () => copyEntryPath(path, false) },
+    { label: 'Copy Relative Path', icon: MENU_ICONS.copy, action: () => copyEntryPath(path, true) },
+    { separator: true },
+    { label: 'Reveal in Explorer', icon: MENU_ICONS.reveal, action: () => revealInExplorer(path) },
+  ]);
+}
+
+/**
+ * Closes several tabs at once. Unsaved files trigger ONE confirmation
+ * for the whole batch (not one prompt per tab), and the editor is only
+ * re-pointed once at the end.
+ */
+function closeMany(paths) {
+  const targets = paths.filter((p) => getOpenFile(p));
+  if (!targets.length) return;
+
+  const dirty = targets.filter((p) => getOpenFile(p).modified);
+  if (dirty.length) {
+    const message = dirty.length === 1
+      ? `"${getOpenFile(dirty[0]).name}" has unsaved changes. Close anyway?`
+      : `${dirty.length} files have unsaved changes. Close them anyway?`;
+    if (!confirm(message)) return;
+  }
+
+  const activeWasClosed = targets.includes(AppState.activeFilePath);
+  targets.forEach((p) => removeOpenFileWithDiffs(p));
+
+  if (AppState.activeFilePath) {
+    if (activeWasClosed) activateTab(AppState.activeFilePath);
+    else renderTabs(); // the shown file didn't change, only the tab bar did
+  } else {
+    hideImagePreview();
+    hideDiff();
+    AppState.editorInstance.setModel(null);
+    showEmptyState();
+    renderTabs();
+  }
+}
+
+export function activateOpenTab(path) { activateTab(path); }
+
 function activateTab(path) {
   const file = getOpenFile(path);
   if (!file) return;
 
   if (AppState.activeFilePath) {
     const prevFile = getOpenFile(AppState.activeFilePath);
-    if (prevFile && !prevFile.isImage) prevFile.viewState = AppState.editorInstance.saveViewState();
+    if (prevFile && !prevFile.isImage && !prevFile.isDiff) {
+      // Only trust the editor's state if it is really showing that file.
+      // After closing a tab its model is disposed and saveViewState()
+      // would return null, wiping the position we had stored.
+      const editor = AppState.editorInstance;
+      if (editor.getModel() === prevFile.model) {
+        const viewState = editor.saveViewState();
+        if (viewState) prevFile.viewState = viewState;
+      }
+    }
   }
 
   setActiveFile(path);
 
-  if (file.isImage) {
+  if (file.isDiff) {
+    showDiff(file);
+  } else if (file.isImage) {
+    hideDiff();
     showImagePreview(file);
   } else {
     hideImagePreview();
+    hideDiff();
+    refreshCustomDocument(file);
     AppState.editorInstance.setModel(file.model);
     if (file.viewState) AppState.editorInstance.restoreViewState(file.viewState);
     AppState.editorInstance.focus();
@@ -652,6 +1005,127 @@ function activateTab(path) {
 
   hideEmptyState();
   renderTabs();
+}
+
+// ---------------- Diff tabs (Source Control) ----------------
+// A diff tab compares the baseline of a file (left, read-only) with the file's own
+// model (right, editable: typing there is typing in the file, so autosave keeps working).
+
+function getDiffEditor() {
+  if (!diffEditor) {
+    diffEditor = monacoNS.editor.createDiffEditor(diffHostEl, {
+      automaticLayout: true,
+      renderSideBySide: true,
+      originalEditable: false,
+      enableSplitViewResizing: true,
+      scrollBeyondLastLine: false,
+      minimap: { enabled: false },
+      renderOverviewRuler: true,
+    });
+  }
+  return diffEditor;
+}
+
+function showDiff(file) {
+  hideImagePreview();
+  if (editorHostEl) editorHostEl.style.display = 'none';
+  if (!diffHostEl) return;
+  diffHostEl.classList.add('visible');
+
+  const target = file.targetPath ? getOpenFile(file.targetPath) : null;
+  const modified = file.status === 'D' ? file.emptyModel : (target && target.model);
+  if (!modified) return;
+
+  const de = getDiffEditor();
+  de.updateOptions({ fontSize: AppState.config.fontSize, wordWrap: AppState.config.wordWrap, readOnly: file.status === 'D' });
+  de.setModel({ original: file.baseModel, modified });
+}
+
+function hideDiff() {
+  if (diffHostEl) diffHostEl.classList.remove('visible');
+  if (diffEditor) diffEditor.setModel(null);
+  if (editorHostEl && diffHostEl && !(imagePreviewHostEl && imagePreviewHostEl.classList.contains('visible'))) {
+    editorHostEl.style.display = '';
+  }
+}
+
+async function ensureRealTab(path) {
+  if (getOpenFile(path)) return true;
+  const node = findFileByPath(AppState.fileSystem, path);
+  if (!node || !(await ensureNodeContent(node))) return false;
+  openFileInEditor({
+    path: node.path, name: node.name, content: node.content, language: getLanguageFromExtension(node.name),
+    handle: null, isVirtual: true, activate: false,
+  });
+  return true;
+}
+
+/** Shows an already-open file and selects `marker`'s range (used by the Problems panel). */
+export function goToProblem(path, marker) {
+  if (!getOpenFile(path)) return;
+  activateTab(path);
+  const ed = AppState.editorInstance;
+  const range = {
+    startLineNumber: marker.startLineNumber, startColumn: marker.startColumn,
+    endLineNumber: marker.endLineNumber || marker.startLineNumber, endColumn: marker.endColumn || marker.startColumn,
+  };
+  ed.setSelection(range);
+  ed.revealRangeInCenter(range);
+  ed.focus();
+}
+
+/** Opens a workspace file in a normal tab and shows it (downloading it first if needed). */
+export async function openWorkspaceFile(path) {
+  if (await ensureRealTab(path)) activateTab(path);
+}
+
+const DIFF_SUFFIX = { M: '(Working Tree)', U: '(Untracked)', D: '(Deleted)' };
+
+/**
+ * Opens (or refreshes) the diff tab of a changed file.
+ * @param {string} path file path, e.g. "/src/app.js"
+ * @param {'M'|'U'|'D'} status
+ * @param {string} baseText baseline text ('' for a new file)
+ */
+export async function openDiffTab(path, status, baseText) {
+  const key = `diff:${path}`;
+  const name = path.split('/').pop();
+  const language = getLanguageFromExtension(name);
+  if (status !== 'D' && !(await ensureRealTab(path))) return;
+
+  let file = getOpenFile(key);
+  if (!file) {
+    addOpenFile(key, { name, language, isVirtual: true });
+    file = getOpenFile(key);
+    file.isDiff = true;
+    file.targetPath = path;
+    file.baseModel = monacoNS.editor.createModel(baseText || '', language, monacoNS.Uri.from({ scheme: 'scm-base', path }));
+    file.emptyModel = status === 'D' ? monacoNS.editor.createModel('', language, monacoNS.Uri.from({ scheme: 'scm-empty', path })) : null;
+  } else if (file.baseModel.getValue() !== (baseText || '')) {
+    file.baseModel.setValue(baseText || '');
+  }
+  file.status = status;
+  file.diffSuffix = DIFF_SUFFIX[status];
+  activateTab(key);
+}
+
+/** Closes diff tabs whose file was renamed/removed (or whose deleted file came back). */
+export function pruneDiffTabs() {
+  let changed = false;
+  for (const [key, f] of Array.from(AppState.openFiles)) {
+    if (!f.isDiff) continue;
+    const exists = !!findFileByPath(AppState.fileSystem, f.targetPath);
+    if ((f.status === 'D') === exists) { removeOpenFile(key); changed = true; }
+  }
+  if (!changed) return;
+  if (AppState.activeFilePath && getOpenFile(AppState.activeFilePath)) activateTab(AppState.activeFilePath);
+  else if (!AppState.activeFilePath) { hideImagePreview(); hideDiff(); AppState.editorInstance.setModel(null); showEmptyState(); renderTabs(); }
+}
+
+/** Closes the diff tabs of the given file paths (after they were committed or discarded). */
+export function closeDiffTabsFor(paths) {
+  const set = new Set(paths);
+  for (const [key, f] of Array.from(AppState.openFiles)) if (f.isDiff && set.has(f.targetPath)) forceCloseTab(key);
 }
 
 let currentZoomImageEl = null;
@@ -676,10 +1150,10 @@ function showImagePreview(file) {
   const toolbar = document.createElement('div');
   toolbar.className = 'image-preview-toolbar';
   toolbar.innerHTML = `
-    <button type="button" class="image-zoom-btn" data-zoom="out" title="Zoom out"><i class="codicon codicon-dash"></i></button>
+    <button type="button" class="image-zoom-btn" data-zoom="out" title="Zoom out"><i class="zi zi-dash"></i></button>
     <span class="image-zoom-level">100%</span>
-    <button type="button" class="image-zoom-btn" data-zoom="in" title="Zoom in"><i class="codicon codicon-add"></i></button>
-    <button type="button" class="image-zoom-btn" data-zoom="reset" title="Fit to window"><i class="codicon codicon-screen-full"></i></button>
+    <button type="button" class="image-zoom-btn" data-zoom="in" title="Zoom in"><i class="zi zi-add"></i></button>
+    <button type="button" class="image-zoom-btn" data-zoom="reset" title="Fit to window"><i class="zi zi-screen-full"></i></button>
   `;
   toolbar.querySelectorAll('.image-zoom-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -757,12 +1231,21 @@ export function forceCloseTab(path) {
   finalizeTabRemoval(path);
 }
 
-function finalizeTabRemoval(path) {
+// A diff tab shows the file's own model on its right side: closing the file closes its diffs too.
+function removeOpenFileWithDiffs(path) {
+  for (const [key, f] of Array.from(AppState.openFiles)) {
+    if (f.isDiff && f.targetPath === path) removeOpenFile(key);
+  }
   removeOpenFile(path);
+}
+
+function finalizeTabRemoval(path) {
+  removeOpenFileWithDiffs(path);
   if (AppState.activeFilePath) {
     activateTab(AppState.activeFilePath);
   } else {
     hideImagePreview();
+    hideDiff();
     AppState.editorInstance.setModel(null);
     showEmptyState();
     renderTabs();
@@ -811,9 +1294,9 @@ export async function reloadFileFromDisk(path) {
 
 export function updateTabModifiedIndicator(path, modified) {
   if (!tabsContainer) return;
-  const tabEl = tabsContainer.querySelector(`.editor-tab[data-path="${CSS.escape(path)}"] .tab-label`);
-  const file = getOpenFile(path);
-  if (tabEl && file) tabEl.textContent = (modified ? '\u25CF ' : '') + file.name;
+  const tabEl = tabsContainer.querySelector(`.editor-tab[data-path="${CSS.escape(path)}"]`);
+  // The unsaved dot lives in the close button's slot (CSS swaps it for an X on hover), exactly like VS Code.
+  if (tabEl) tabEl.classList.toggle('modified', !!modified);
 }
 
 function showEmptyState() { if (editorHostEl) editorHostEl.classList.add('editor-empty'); }
@@ -823,6 +1306,8 @@ export async function saveFile(path) {
   const file = getOpenFile(path);
   if (!file) return false;
   if (file.isImage) return false; // images have no editable model to save
+  if (file.isDiff) return file.targetPath && getOpenFile(file.targetPath) ? saveFile(file.targetPath) : false; // saving a diff saves its file
+  if (file.custom) return saveCustomDocument(path, file); // validated and applied, never written to disk
 
   // Format on save only applies to the file currently shown in the
   // editor, since the format action operates on the live model.
@@ -834,6 +1319,8 @@ export async function saveFile(path) {
       console.warn('Formatting failed, saving unformatted:', err);
     }
   }
+
+  await runWillSave(path, file.model); // extensions (e.g. Save Actions) may adjust the text first
 
   const content = file.model.getValue();
   file.content = content;
@@ -866,6 +1353,7 @@ export async function saveFile(path) {
     markFileModified(path, false);
     updateTabModifiedIndicator(path, false);
     updateExplorerModifiedIndicator(path, false);
+    document.dispatchEvent(new CustomEvent('zern:file-saved', { detail: { path } }));
     showToast({ type: 'success', message: `"${file.name}" saved`, timeout: 2200 });
     return true;
   } catch (err) {
@@ -880,26 +1368,13 @@ export async function saveAllFiles() {
 }
 
 function setupKeyboardShortcuts() {
-  document.addEventListener('keydown', async (e) => {
-    const ctrlOrCmd = e.ctrlKey || e.metaKey;
-
-    if (ctrlOrCmd && e.key.toLowerCase() === 's') {
-      e.preventDefault();
-      if (AppState.activeFilePath) await saveFile(AppState.activeFilePath);
-      return;
-    }
-
-    // Ctrl+Q opens Monaco's REAL Command Palette (editor.action.quickCommand),
-    // with all of the app's commands registered as native actions.
-    if (ctrlOrCmd && e.key.toLowerCase() === 'q') {
-      e.preventDefault();
-      openCommandPalette();
-      return;
-    }
-
-    if (ctrlOrCmd && e.key.toLowerCase() === 'w') {
-      if (AppState.activeFilePath) { e.preventDefault(); closeTab(AppState.activeFilePath); }
-    }
+  // Ctrl+Q opens Monaco's REAL Command Palette (editor.action.quickCommand),
+  // with all of the app's commands registered as native actions.
+  defineCommand('app.commandPalette', { label: 'Show All Commands', key: 'Ctrl+Q', global: true, run: () => openCommandPalette() });
+  defineCommand('app.tab.close', {
+    label: 'View: Close Editor Tab', key: 'Ctrl+W', global: true,
+    when: () => !!AppState.activeFilePath,
+    run: () => closeTab(AppState.activeFilePath),
   });
 }
 
@@ -910,6 +1385,8 @@ function setupContentChangeTracking() {
     if (anyModified) { e.preventDefault(); e.returnValue = ''; }
   });
 }
+
+export function getMonacoNS() { return monacoNS; }
 
 export function updateEditorConfig(partialConfig) {
   Object.assign(AppState.config, partialConfig);

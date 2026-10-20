@@ -1,0 +1,34 @@
+{
+  "id": "zern.json-tools",
+  "name": "json-tools",
+  "displayName": "JSON Tools",
+  "publisher": "Zern",
+  "version": "1.0.0",
+  "description": "Format, minify, sort and validate JSON, and escape or unescape text for JSON strings.",
+  "icon": "icon.svg",
+  "categories": ["Formatters", "Web"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "recommend": { "fileExtensions": ["json"], "message": "Format, minify, sort and validate this JSON file." },
+  "contributes": {
+    "commands": [
+      { "command": "jsonTools.format", "title": "JSON Tools: Format JSON" },
+      { "command": "jsonTools.minify", "title": "JSON Tools: Minify JSON" },
+      { "command": "jsonTools.sortKeys", "title": "JSON Tools: Sort Keys" },
+      { "command": "jsonTools.validate", "title": "JSON Tools: Validate JSON" },
+      { "command": "jsonTools.escape", "title": "JSON Tools: Escape Text as JSON String" },
+      { "command": "jsonTools.unescape", "title": "JSON Tools: Unescape JSON String" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "jsonTools.format", "when": "editorLangId == 'json'" },
+        { "command": "jsonTools.minify", "when": "editorLangId == 'json'" }
+      ]
+    },
+    "settings": [
+      { "key": "indent", "type": "number", "title": "Indentation", "description": "Spaces per level when formatting.", "default": 2, "min": 1, "max": 8 },
+      { "key": "useTabs", "type": "boolean", "title": "Indent with tabs", "description": "Use a tab per level instead of spaces.", "default": false }
+    ]
+  }
+}

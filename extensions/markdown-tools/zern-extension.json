@@ -1,0 +1,27 @@
+{
+  "id": "zern.markdown-tools",
+  "name": "markdown-tools",
+  "displayName": "Markdown Tools",
+  "publisher": "Zern",
+  "version": "1.0.0",
+  "description": "Generate and update a table of contents, and align Markdown tables.",
+  "icon": "icon.svg",
+  "categories": ["Writing", "Formatters"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "contributes": {
+    "commands": [
+      { "command": "markdownTools.insertToc", "title": "Markdown Tools: Insert Table of Contents" },
+      { "command": "markdownTools.updateToc", "title": "Markdown Tools: Update Table of Contents" },
+      { "command": "markdownTools.formatTables", "title": "Markdown Tools: Format Tables" }
+    ],
+    "menus": {
+      "editor/context": [{ "command": "markdownTools.formatTables", "when": "editorLangId == 'markdown'" }]
+    },
+    "settings": [
+      { "key": "tocMinLevel", "type": "number", "title": "First heading level in the table of contents", "description": "1 includes the title (#), 2 starts at ##.", "default": 1, "min": 1, "max": 6 },
+      { "key": "tocMaxLevel", "type": "number", "title": "Last heading level in the table of contents", "description": "Deeper headings are left out.", "default": 3, "min": 1, "max": 6 }
+    ]
+  }
+}

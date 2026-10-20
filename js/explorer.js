@@ -10,13 +10,17 @@ import { verifyPermission, saveDirectoryHandle, addRecentFolder } from './db.js'
 import { openFileInEditor, forceCloseTab, renameOpenFile, scheduleVirtualFsSave } from './editor.js';
 import { getFileIcon, getFolderIcon, MENU_ICONS } from './icons.js';
 import { showContextMenu } from './context-menu.js';
+import { explorerMenuItems } from './extensions/menus.js';
 import { showToast } from './notifications.js';
 import { confirmDialog } from './dialogs.js';
 import {
   realRenameFile, realRenameFolder, realDeleteEntry, realCreateFile, realCreateFolder,
   realMoveFolder, virtualRename, virtualDelete, virtualCreateFile, virtualCreateFolder,
-  virtualMoveFolder, getParentPath,
+  virtualMoveFolder, virtualMoveNode, virtualInsertSnapshot, getParentPath, realDuplicateEntry, virtualDuplicate,
+  getDisplayPath, getRelativePath,
 } from './file-ops.js';
+import { copyTextToClipboard } from './clipboard.js';
+import { ensureNodeContent } from './node-content.js';
 
 let explorerContainer = null;
 const realHandleCache = new Map();
@@ -51,7 +55,7 @@ export async function renderExplorer(container) {
   if (AppState.isRealFS && AppState.rootDirHandle) {
     const loadingEl = document.createElement('div');
     loadingEl.className = 'explorer-loading';
-    loadingEl.innerHTML = '<i class="codicon codicon-loading codicon-modifier-spin"></i><span>Loading folder...</span>';
+    loadingEl.innerHTML = '<i class="zi zi-loading zi-modifier-spin"></i><span>Loading folder...</span>';
     container.appendChild(loadingEl);
 
     realHandleCache.set('/', { handle: AppState.rootDirHandle, kind: 'directory', parentHandle: null });
@@ -159,6 +163,89 @@ function buildRowSkeleton(depth) {
   return { row, twistyEl, iconEl };
 }
 
+// ---------------- Explorer decorations (Source Control + Problems) ----------------
+// Same marks as VS Code's Explorer: colored name + a badge on the right.
+//   Source Control: M modified, U untracked, and a dot on folders that contain changes.
+//   Problems: red/yellow name + the number of errors (or warnings) and a dot on parent folders.
+// A file with both shows both in one badge ("2, M"); the problem color wins.
+
+let scmFiles = new Map();       // "/path" -> 'M' | 'U'
+let scmFolders = new Set();     // folders with changed (or deleted) files inside
+let problemFiles = new Map();   // "/path" -> { errors, warnings }
+let problemFolders = new Map(); // folder "/path" -> 'error' | 'warning'
+
+const DECOR_CLASSES = ['git-modified', 'git-added', 'git-folder-dirty', 'has-git-badge', 'problem-error', 'problem-warning'];
+const DOT = '\u25CF';
+
+function applyScmDecorationToLi(li) {
+  const row = li.querySelector(':scope > .explorer-row');
+  if (!row) return;
+  row.classList.remove(...DECOR_CLASSES);
+  const old = row.querySelector(':scope > .git-badge');
+  if (old) old.remove();
+
+  const path = li.dataset.path;
+  const parts = [];
+
+  const pf = problemFiles.get(path);
+  const pfolder = problemFolders.get(path);
+  if (pf) {
+    row.classList.add(pf.errors ? 'problem-error' : 'problem-warning');
+    parts.push(String(pf.errors || pf.warnings));
+  } else if (pfolder) {
+    row.classList.add(pfolder === 'error' ? 'problem-error' : 'problem-warning');
+  }
+
+  const status = scmFiles.get(path);
+  if (status === 'M') { row.classList.add('git-modified'); parts.push('M'); }
+  else if (status === 'U') { row.classList.add('git-added'); parts.push('U'); }
+  else if (scmFolders.has(path)) row.classList.add('git-folder-dirty');
+
+  // Folders (git or problems) show a single dot
+  if (!parts.length && (pfolder || scmFolders.has(path))) parts.push(DOT);
+  if (!parts.length) return;
+
+  const badge = document.createElement('span');
+  badge.className = 'git-badge' + (parts.length === 1 && parts[0] === DOT ? ' dot' : '');
+  badge.textContent = parts.join(', ');
+  row.classList.add('has-git-badge');
+  row.appendChild(badge);
+}
+
+function redecorate() {
+  if (explorerContainer) explorerContainer.querySelectorAll('li[data-path]').forEach(applyScmDecorationToLi);
+}
+
+/** @param {Array<{path:string,status:'M'|'U'|'D'}>} changes */
+export function setScmDecorations(changes) {
+  scmFiles = new Map();
+  scmFolders = new Set();
+  for (const c of changes) {
+    if (c.status !== 'D') scmFiles.set(c.path, c.status);
+    let dir = c.path.slice(0, c.path.lastIndexOf('/'));
+    while (dir) { scmFolders.add(dir); dir = dir.slice(0, dir.lastIndexOf('/')); }
+  }
+  redecorate();
+}
+
+/** @param {Array<{path:string, markers:Array<{kind:'error'|'warning'|'info'}>}>} files */
+export function setProblemDecorations(files) {
+  problemFiles = new Map();
+  problemFolders = new Map();
+  for (const f of files) {
+    const errors = f.markers.filter((m) => m.kind === 'error').length;
+    const warnings = f.markers.filter((m) => m.kind === 'warning').length;
+    if (!errors && !warnings) continue; // infos don't decorate
+    problemFiles.set(f.path, { errors, warnings });
+    let dir = f.path.slice(0, f.path.lastIndexOf('/'));
+    while (dir) {
+      if (errors || problemFolders.get(dir) !== 'error') problemFolders.set(dir, errors ? 'error' : 'warning');
+      dir = dir.slice(0, dir.lastIndexOf('/'));
+    }
+  }
+  redecorate();
+}
+
 // ---------------- Virtual tree ----------------
 
 function renderVirtualFolder(folderNode, parentUl, depth) {
@@ -176,7 +263,7 @@ function renderVirtualFolder(folderNode, parentUl, depth) {
     li.appendChild(row);
 
     if (child.type === 'folder') {
-      twistyEl.innerHTML = '<i class="codicon codicon-chevron-right"></i>';
+      twistyEl.innerHTML = '<i class="zi zi-chevron-right"></i>';
       twistyEl.classList.toggle('expanded', !!child.expanded);
       iconEl.innerHTML = getFolderIcon(child.expanded);
 
@@ -216,25 +303,28 @@ function renderVirtualFolder(folderNode, parentUl, depth) {
 
       row.addEventListener('click', (e) => {
         e.stopPropagation();
-        openVirtualFile(child);
         highlightActiveRow(child.path);
-        notifyFileOpened();
+        openVirtualFile(child).then((opened) => { if (opened) notifyFileOpened(); });
       });
       row.addEventListener('mouseenter', () => setHovered(child.path, 'file', child.name));
       row.addEventListener('contextmenu', (e) => onEntryContextMenu(e, child.path, 'file', child.name));
       bindDragSource(li, row, child.path, 'file');
     }
 
+    applyScmDecorationToLi(li);
     parentUl.appendChild(li);
   }
 }
 
-function openVirtualFile(fileNode) {
+async function openVirtualFile(fileNode) {
+  // Files of a GitHub repository are downloaded on first open
+  if (!(await ensureNodeContent(fileNode))) return false;
   const language = getLanguageFromExtension(fileNode.name);
   openFileInEditor({
     path: fileNode.path, name: fileNode.name, content: fileNode.content ?? '',
     language, handle: null, isVirtual: true,
   });
+  return true;
 }
 
 // ---------------- Real tree (File System Access API) ----------------
@@ -266,7 +356,7 @@ async function renderRealFolder(dirHandle, path, parentUl, depth) {
 
     if (handle.kind === 'directory') {
       li.className = 'explorer-folder';
-      twistyEl.innerHTML = '<i class="codicon codicon-chevron-right"></i>';
+      twistyEl.innerHTML = '<i class="zi zi-chevron-right"></i>';
       iconEl.innerHTML = getFolderIcon(false);
 
       const childUl = document.createElement('ul');
@@ -331,7 +421,7 @@ async function renderRealFolder(dirHandle, path, parentUl, depth) {
   }
 }
 
-export async function openRealFile(fileHandle, path, name) {
+export async function openRealFile(fileHandle, path, name, { activate = true } = {}) {
   try {
     const hasPermission = await verifyPermission(fileHandle, true);
     if (!hasPermission) {
@@ -342,7 +432,7 @@ export async function openRealFile(fileHandle, path, name) {
     if (isImageExtension(name)) {
       const file = await fileHandle.getFile();
       const imageUrl = URL.createObjectURL(file);
-      openFileInEditor({ path, name, isImage: true, imageUrl, handle: fileHandle, isVirtual: false });
+      openFileInEditor({ path, name, isImage: true, imageUrl, handle: fileHandle, isVirtual: false, activate });
       return;
     }
 
@@ -352,7 +442,7 @@ export async function openRealFile(fileHandle, path, name) {
 
     openFileInEditor({
       path, name, content, language, handle: fileHandle, isVirtual: false,
-      lastModified: file.lastModified,
+      lastModified: file.lastModified, activate,
     });
   } catch (err) {
     console.error('Error opening real file:', err);
@@ -369,7 +459,7 @@ export function getCachedHandle(path) {
 // on desktop/tablet nothing listens differently, so this is a no-op
 // there beyond the event simply existing.
 function notifyFileOpened() {
-  document.dispatchEvent(new CustomEvent('kcode:file-opened'));
+  document.dispatchEvent(new CustomEvent('zern:file-opened'));
 }
 
 // ---------------- Drag & drop files AND folders (move between folders) ----------------
@@ -523,9 +613,9 @@ function moveFileVirtual(sourcePath, targetFolderPath, fileName) {
     throw new Error(`a file named "${fileName}" already exists in the destination folder`);
   }
 
-  const content = node.content ?? '';
-  virtualDelete(sourcePath);
-  virtualCreateFile(targetFolderPath, fileName, content);
+  // Move the node itself (not "delete + create"): keeps its GitHub sha/mode and never
+  // turns a not-yet-downloaded file into an empty one.
+  virtualMoveNode(sourcePath, targetFolderPath, fileName);
   scheduleVirtualFsSave();
 }
 
@@ -572,10 +662,10 @@ export function updateExplorerModifiedIndicator(path, modified) {
   if (!explorerContainer) return;
   const li = explorerContainer.querySelector(`li[data-path="${CSS.escape(path)}"]`);
   if (!li) return;
-  const label = li.querySelector(':scope > .explorer-row .explorer-label');
-  if (!label) return;
-  const baseName = label.textContent.replace(/^\u25CF\s/, '');
-  label.textContent = modified ? `\u25CF ${baseName}` : baseName;
+  const row = li.querySelector(':scope > .explorer-row');
+  if (!row) return;
+  // Styled by CSS (colored name + dot on the right), like VS Code's "modified" decoration
+  row.classList.toggle('modified', !!modified);
 }
 
 function onEntryContextMenu(e, path, type, name) {
@@ -592,11 +682,114 @@ function onEntryContextMenu(e, path, type, name) {
     );
   }
   items.push(
+    { label: 'Duplicate', icon: MENU_ICONS.duplicate, action: () => duplicateEntry(path, type, name) },
+    { separator: true },
+    { label: 'Copy Path', icon: MENU_ICONS.copy, action: () => copyEntryPath(path, false) },
+    { label: 'Copy Relative Path', icon: MENU_ICONS.copy, action: () => copyEntryPath(path, true) },
+    { separator: true },
     { label: 'Rename', icon: MENU_ICONS.rename, keybinding: 'F2', action: () => startRenameEntry(path, type, name) },
     { label: 'Delete', icon: MENU_ICONS.delete, danger: true, keybinding: 'Del', action: () => deleteEntryByPath(path, type, name) },
   );
 
-  showContextMenu(e.clientX, e.clientY, items);
+  showContextMenu(e.clientX, e.clientY, [...items, ...explorerMenuItems({ path, type })]);
+}
+
+// ---------------- Copy path / Duplicate / Reveal ----------------
+
+export async function copyEntryPath(path, relative) {
+  const text = relative ? getRelativePath(path) : getDisplayPath(path);
+  const ok = await copyTextToClipboard(text);
+  showToast(ok
+    ? { type: 'success', message: relative ? 'Relative path copied' : 'Path copied', timeout: 1800 }
+    : { type: 'error', message: 'Could not copy to the clipboard.' });
+}
+
+async function duplicateEntry(path, type, name) {
+  const parentPath = getParentPath(path);
+  let newName = null;
+  let realParentHandle = null;
+
+  try {
+    if (AppState.isRealFS) {
+      const meta = realHandleCache.get(path);
+      if (!meta || !meta.parentHandle) throw new Error('Could not find the real reference for this entry.');
+      realParentHandle = meta.parentHandle;
+      newName = await realDuplicateEntry(realParentHandle, name, type === 'folder');
+    } else {
+      const result = virtualDuplicate(path);
+      if (!result) throw new Error('the original entry was not found');
+      newName = result.newName;
+      scheduleVirtualFsSave();
+    }
+  } catch (err) {
+    console.error('Error duplicating entry:', err);
+    showToast({ type: 'error', message: `Could not duplicate "${name}": ${err.message}` });
+    await renderExplorer(explorerContainer);
+    return;
+  }
+
+  const newPath = normalizePath(parentPath === '/' ? `/${newName}` : `${parentPath}/${newName}`);
+
+  showToast({
+    type: 'success', message: `Duplicated as "${newName}"`, timeout: 6000,
+    actionLabel: 'Undo',
+    onAction: async () => {
+      try {
+        if (AppState.isRealFS && realParentHandle) {
+          await realDeleteEntry(realParentHandle, newName, type === 'folder');
+        } else {
+          virtualDelete(newPath);
+          scheduleVirtualFsSave();
+        }
+      } catch (err) {
+        console.error('Error undoing duplicate:', err);
+        showToast({ type: 'error', message: `Could not remove "${newName}": ${err.message}` });
+      }
+      await renderExplorer(explorerContainer);
+    },
+  });
+
+  // The tree is rebuilt from scratch after every operation, so re-open
+  // the path down to the new copy to make it visible right away.
+  await renderExplorer(explorerContainer);
+  await revealInExplorer(newPath);
+}
+
+/**
+ * Expands every ancestor folder of `path` in the tree, highlights the
+ * row and scrolls it into view. Also asks the app to bring the
+ * Explorer side bar to the front (it might be collapsed or showing
+ * the Search view). Returns false when there is nothing to reveal in.
+ */
+export async function revealInExplorer(path) {
+  const norm = normalizePath(path);
+  if (!explorerContainer || explorerContainer.style.display === 'none' || !folderState.has('/')) {
+    showToast({ type: 'info', message: 'Open a folder (or use the virtual filesystem) to reveal files in the Explorer.' });
+    return false;
+  }
+
+  document.dispatchEvent(new CustomEvent('zern:show-explorer'));
+
+  const parts = norm.split('/').filter(Boolean);
+  let current = '';
+  for (let i = 0; i < parts.length - 1; i++) {
+    current += `/${parts[i]}`;
+    const st = folderState.get(current);
+    if (!st) break; // path not in the tree (e.g. file from a previously opened folder)
+    if (!st.isExpanded) await st.expand();
+  }
+
+  const li = explorerContainer.querySelector(`li[data-path="${CSS.escape(norm)}"]`);
+  if (!li) {
+    showToast({ type: 'warning', message: 'That file is not part of the folder currently shown in the Explorer.' });
+    return false;
+  }
+
+  highlightActiveRow(norm);
+  // Give the side bar's open/collapse transition time to finish first,
+  // otherwise the row has no size yet and scrollIntoView does nothing.
+  setTimeout(() => li.scrollIntoView({ block: 'nearest' }), 260);
+  return true;
 }
 
 async function ensureExpanded(path) {
@@ -612,7 +805,7 @@ async function startCreateEntry(parentPath, type) {
   const li = document.createElement('li');
   const { row, twistyEl, iconEl } = buildRowSkeleton(st.depth);
 
-  if (type === 'folder') twistyEl.innerHTML = '<i class="codicon codicon-chevron-right"></i>';
+  if (type === 'folder') twistyEl.innerHTML = '<i class="zi zi-chevron-right"></i>';
   iconEl.innerHTML = type === 'folder' ? getFolderIcon(false) : getFileIcon('');
 
   const input = document.createElement('input');
@@ -771,13 +964,7 @@ function snapshotVirtualNode(node) {
 }
 
 function restoreVirtualSnapshot(snapshot, parentPath) {
-  if (snapshot.type === 'file') {
-    virtualCreateFile(parentPath, snapshot.name, snapshot.content ?? '');
-  } else {
-    virtualCreateFolder(parentPath, snapshot.name);
-    const newFolderPath = normalizePath(parentPath === '/' ? `/${snapshot.name}` : `${parentPath}/${snapshot.name}`);
-    (snapshot.children || []).forEach((child) => restoreVirtualSnapshot(child, newFolderPath));
-  }
+  virtualInsertSnapshot(parentPath, snapshot);
   scheduleVirtualFsSave();
 }
 

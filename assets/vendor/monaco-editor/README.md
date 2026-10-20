@@ -1,44 +1,12 @@
-# Running Monaco 100% offline
+# Monaco Editor (local copy)
 
-By default, KCode loads Monaco from the jsDelivr CDN. If this folder
-contains a real copy of Monaco, KCode uses it automatically instead -
-no code changes needed, no internet required after that.
+Zern loads Monaco from `min/vs/` in this folder, so the editor works fully offline.
+If the folder is missing, it falls back to the jsDelivr CDN automatically.
 
-## How to get the local copy (needs Node.js once, on any machine)
+- The copy in the project is the one Zern is tested with.
+- To replace it with another version:
+  `npm i -D monaco-editor@<version>` then `npm run vendor -- --force`
 
-```bash
-npm install monaco-editor@0.45.0 --no-save
-cp -r node_modules/monaco-editor/min ./min
-rm -rf node_modules package-lock.json
-```
-
-Run that from inside this folder (`assets/vendor/monaco-editor/`). When
-you're done, this folder should look like:
-
-```
-assets/vendor/monaco-editor/
-├── README.md          <- this file
-└── min/
-    └── vs/
-        ├── loader.js
-        ├── editor/
-        │   └── editor.main.js
-        └── ... (everything else npm installed)
-```
-
-That's it - reload the app. KCode checks for `min/vs/loader.js` here
-on startup; if it's missing (like right now, fresh from the zip), it
-silently falls back to the CDN version, so nothing breaks either way.
-
-## Why this matters on Termux/offline setups
-
-If you're running KCode without a reliable internet connection (or
-jsDelivr is ever down/blocked), the editor currently can't load at all
-without this local copy - Monaco itself, not just your files, comes
-from that CDN.
-
-## Note
-
-Codicons, JSZip, and the optional Inter font still load from their own
-CDNs regardless of this setting - this only affects Monaco itself. Say
-the word if you want those made local too.
+The app's icons (`css/icons.css`) are generated from the Codicons font that Monaco embeds, so they match Monaco's and
+never need a separate icon package. After replacing Monaco, `npm run vendor` rebuilds them (or `npm run icons`).
+JSZip (ZIP import/export) lives in `../jszip/`.

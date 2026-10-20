@@ -3,38 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>KCode</title>
+<title>Zern</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/style-additions.css">
 <link rel="stylesheet" href="css/themes.css">
 <link rel="stylesheet" href="css/mobile.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/vscode-look.css">
+<link rel="stylesheet" href="css/extensions.css">
+<link rel="stylesheet" href="css/preferences.css">
+<link rel="stylesheet" href="css/desktop.css">
+<link rel="stylesheet" href="css/github.css">
+<link rel="stylesheet" href="css/problems.css">
 <!-- Codicons: the REAL Visual Studio Code icon font -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.45/dist/codicon.css" id="app-codicon-link">
+<!-- Zern's own icon set (own classes and font, embedded): Monaco cannot affect it -->
+<link rel="stylesheet" href="css/icons.css">
 <!-- JSZip: used to export/import the virtual project as a .zip file -->
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="assets/vendor/jszip/jszip.min.js"></script>
 <!-- Inter: optional UI font, selectable in Settings -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="icon" href="assets/logo/logo.svg" type="image/svg+xml">
-<link rel="alternate icon" href="assets/logo/logo-32.png" type="image/png">
+<link rel="alternate icon" href="assets/logo/logo-32.png" type="image/png" sizes="32x32">
+<link rel="alternate icon" href="assets/logo/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="assets/logo/logo-192.png">
 <link rel="manifest" href="manifest.json">
+<meta name="description" content="Zern is a minimal code editor that runs in your browser, built on the VS Code engine. Free, offline-ready, no account.">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<meta name="zern-version" content="1.0.0-rc.11">
 <meta name="theme-color" content="#121314">
 </head>
 <body data-theme="dark-2026">
 
+<!-- Title bar: app menu, command center (click = Go to File) and layout toggle, like VS Code -->
+<header class="title-bar" id="title-bar">
+  <div class="title-left">
+    <span class="title-logo zern-mark" aria-hidden="true"></span>
+    <nav class="menu-bar" id="menu-bar" aria-label="Application menu">
+      <button type="button" class="menu-btn" data-menu="file">File</button>
+      <button type="button" class="menu-btn" data-menu="edit">Edit</button>
+      <button type="button" class="menu-btn" data-menu="view">View</button>
+      <button type="button" class="menu-btn" data-menu="go">Go</button>
+      <button type="button" class="menu-btn" data-menu="help">Help</button>
+    </nav>
+  </div>
+  <button type="button" class="command-center" id="command-center" title="Go to File (Ctrl+P)">
+    <i class="zi zi-search"></i><span id="command-center-label">Zern</span>
+  </button>
+  <div class="title-right">
+    <button type="button" class="title-btn" id="title-toggle-sidebar" title="Toggle Primary Side Bar (Ctrl+B)"><i class="zi zi-layout-sidebar-left"></i></button>
+    <button type="button" class="title-btn" id="title-settings" title="Settings"><i class="zi zi-settings-gear"></i></button>
+  </div>
+</header>
 <div id="app">
 
   <nav class="activity-bar" id="activity-bar">
     <button class="activity-btn active" data-view="explorer" title="Explorer (Ctrl+Shift+E)">
-      <i class="codicon codicon-files"></i>
+      <i class="zi zi-files"></i>
     </button>
     <button class="activity-btn" data-view="search" title="Search (Ctrl+Shift+F)">
-      <i class="codicon codicon-search"></i>
+      <i class="zi zi-search"></i>
+    </button>
+    <button class="activity-btn" data-view="scm" id="btn-scm" title="Source Control (Ctrl+Shift+G)">
+      <i class="zi zi-source-control"></i>
+      <span class="activity-badge" id="scm-badge" hidden>0</span>
+    </button>
+    <button class="activity-btn" data-view="extensions" id="btn-extensions" title="Extensions (Ctrl+Shift+X)">
+      <i class="zi zi-extensions"></i>
     </button>
     <div class="activity-spacer"></div>
     <button class="activity-btn" id="btn-settings" title="Settings">
-      <i class="codicon codicon-settings-gear"></i>
+      <i class="zi zi-settings-gear"></i>
     </button>
   </nav>
 
@@ -44,19 +84,19 @@
         <span id="explorer-title">Explorer</span>
         <div class="side-bar-actions">
           <button id="btn-new-file" title="New File">
-            <i class="codicon codicon-new-file"></i>
+            <i class="zi zi-new-file"></i>
           </button>
           <button id="btn-new-folder" title="New Folder">
-            <i class="codicon codicon-new-folder"></i>
+            <i class="zi zi-new-folder"></i>
           </button>
           <button id="btn-open-folder" title="Open Folder">
-            <i class="codicon codicon-folder-opened"></i>
+            <i class="zi zi-folder-opened"></i>
           </button>
           <button id="btn-export-zip" title="Export Project as ZIP">
-            <i class="codicon codicon-cloud-download"></i>
+            <i class="zi zi-cloud-download"></i>
           </button>
           <button id="btn-import-zip" title="Import Project from ZIP">
-            <i class="codicon codicon-cloud-upload"></i>
+            <i class="zi zi-cloud-upload"></i>
           </button>
         </div>
       </div>
@@ -66,6 +106,7 @@
           <p>No folder has been opened yet.</p>
           <button id="btn-open-folder-main" class="btn-primary">Open Folder</button>
           <button id="btn-virtual-fs" class="btn-link">Use the virtual filesystem instead</button>
+          <button id="btn-open-github" class="btn-link"><i class="zi zi-github"></i> Open a GitHub repository</button>
 
           <div id="recent-folders-section" class="recent-folders-section" style="display:none;">
             <p class="recent-folders-title">Recent Folders</p>
@@ -84,51 +125,92 @@
         <div class="search-input-wrapper">
           <input type="text" id="search-input" placeholder="Search across files" autocomplete="off">
           <button id="search-clear" title="Clear search" style="display:none;">
-            <i class="codicon codicon-close"></i>
+            <i class="zi zi-close"></i>
           </button>
         </div>
         <div class="search-input-wrapper">
           <input type="text" id="search-replace-input" placeholder="Replace with..." autocomplete="off">
           <button id="search-replace-all" class="search-replace-all-btn" title="Replace all matches">
-            <i class="codicon codicon-replace-all"></i>
+            <i class="zi zi-replace-all"></i>
           </button>
         </div>
         <div id="search-summary" class="search-summary"></div>
         <div id="search-results" class="search-results"></div>
       </div>
     </div>
+
+    <div class="sidebar-view" id="view-scm" style="display:none;">
+      <div class="side-bar-header">
+        <span>Source Control</span>
+        <div class="side-bar-actions" id="scm-header-actions"></div>
+      </div>
+      <div class="side-bar-content scm-content" id="scm-root"></div>
+    </div>
+
+    <div class="sidebar-view" id="view-extensions" style="display:none;"></div>
   </aside>
 
   <div class="sidebar-resizer" id="sidebar-resizer"></div>
 
   <main class="editor-area">
+    <div class="editor-row" id="editor-row">
+    <div class="editor-col" id="editor-col">
     <div class="tabs-bar" id="tabs-bar"></div>
+    <div class="breadcrumbs" id="breadcrumbs" hidden aria-label="Breadcrumbs"></div>
     <div class="editor-host-wrapper">
       <div id="editor-host" class="editor-host editor-empty"></div>
       <div id="image-preview-host" class="image-preview-host"></div>
+      <div id="diff-host" class="diff-host"></div>
       <div class="editor-empty-placeholder" id="editor-empty-placeholder">
-        <img class="placeholder-logo" src="assets/logo/logo.svg" alt="KCode" width="72" height="72">
-        <p>Select a file to start editing</p>
-        <p class="placeholder-hint">
-          <kbd>Ctrl</kbd> + <kbd>S</kbd> Save &nbsp;&nbsp;
-          <kbd>Ctrl</kbd> + <kbd>F</kbd> Find &nbsp;&nbsp;
-          <kbd>Ctrl</kbd> + <kbd>Q</kbd> Command Palette
-        </p>
+        <span class="placeholder-logo zern-mark" role="img" aria-label="Zern"></span>
+        <dl class="watermark-keys">
+          <dt>Show All Commands</dt><dd><kbd>Ctrl</kbd><kbd>Q</kbd></dd>
+          <dt>Go to File</dt><dd><kbd>Ctrl</kbd><kbd>P</kbd></dd>
+          <dt>Find in Files</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd></dd>
+          <dt>Go to Definition</dt><dd><kbd>F12</kbd></dd>
+          <dt>Save</dt><dd><kbd>Ctrl</kbd><kbd>S</kbd></dd>
+        </dl>
       </div>
     </div>
+    <div class="ext-page-host" id="ext-page-host"></div>
+    </div>
+    <div class="aside-resizer" id="aside-resizer" hidden></div>
+    <aside class="editor-aside" id="editor-aside" hidden aria-label="Side panel"></aside>
+    </div>
+      <section class="bottom-panel" id="bottom-panel" hidden aria-label="Problems">
+      <div class="panel-sash" id="panel-sash" title="Drag to resize"></div>
+      <div class="panel-header">
+        <div class="panel-tabs"><span class="panel-tab active">PROBLEMS <span class="panel-badge" id="problems-badge">0</span></span></div>
+        <div class="panel-tools">
+          <input type="text" id="problems-filter" class="panel-filter" placeholder="Filter (e.g. text, file name)" autocomplete="off" spellcheck="false">
+          <button type="button" class="sev-toggle on" data-sev="error" aria-pressed="true" title="Show Errors"><i class="zi zi-error"></i><span id="count-error">0</span></button>
+          <button type="button" class="sev-toggle on" data-sev="warning" aria-pressed="true" title="Show Warnings"><i class="zi zi-warning"></i><span id="count-warning">0</span></button>
+          <button type="button" class="sev-toggle on" data-sev="info" aria-pressed="true" title="Show Information"><i class="zi zi-info"></i><span id="count-info">0</span></button>
+          <button type="button" class="panel-btn" id="problems-collapse" title="Collapse All"><i class="zi zi-collapse-all"></i></button>
+          <button type="button" class="panel-btn" id="panel-close" title="Close Panel"><i class="zi zi-close"></i></button>
+        </div>
+      </div>
+      <div class="panel-body" id="problems-list"></div>
+    </section>
   </main>
 
 </div>
 
 <footer class="status-bar" id="status-bar">
   <div class="status-left">
-    <span id="status-fs-mode">Virtual mode</span>
-    <span id="status-modified-count"></span>
+    <span class="status-item status-remote" id="status-fs-mode">Virtual mode</span>
+    <span class="status-item" id="status-branch" role="button" tabindex="0" title="Switch or create branch" hidden></span>
+    <span class="status-item" id="status-sync" role="button" tabindex="0" hidden></span>
+    <span class="status-item" id="status-problems" role="button" tabindex="0"></span>
+    <span class="status-item" id="status-modified-count"></span>
   </div>
   <div class="status-right">
-    <span id="status-cursor-pos">Ln 1, Col 1</span>
-    <span id="status-language">plaintext</span>
-    <span id="status-autosave">Autosave: ON</span>
+    <span class="status-item" id="status-cursor-pos" role="button" tabindex="0" title="Go to Line/Column">Ln 1, Col 1</span>
+    <span class="status-item" id="status-indent" title="Indentation">Spaces: 2</span>
+    <span class="status-item" id="status-encoding" title="Encoding">UTF-8</span>
+    <span class="status-item" id="status-eol" title="End of Line Sequence">LF</span>
+    <span class="status-item" id="status-language" title="Language Mode">plaintext</span>
+    <span class="status-item" id="status-autosave" role="button" tabindex="0" title="Toggle Autosave">Autosave: ON</span>
   </div>
 </footer>
 
@@ -136,7 +218,7 @@
   <div class="settings-panel">
     <div class="settings-panel-header">
       <span>Settings</span>
-      <button id="btn-close-settings"><i class="codicon codicon-close"></i></button>
+      <button id="btn-close-settings"><i class="zi zi-close"></i></button>
     </div>
     <div class="settings-panel-body">
 
@@ -205,6 +287,14 @@
           <label class="switch"><input type="checkbox" id="cfg-bracket-colorization"><span class="switch-slider"></span></label>
         </div>
         <div class="settings-row settings-row-checkbox">
+          <label for="cfg-semantic-validation" title="Reports undefined variables and type errors in JS/TS files (module-not-found noise is always hidden). Off: only syntax errors.">Check Types in JS/TS (semantic errors)</label>
+          <label class="switch"><input type="checkbox" id="cfg-semantic-validation"><span class="switch-slider"></span></label>
+        </div>
+        <div class="settings-row settings-row-checkbox">
+          <label for="cfg-auto-close-tags">Auto Close HTML Tags</label>
+          <label class="switch"><input type="checkbox" id="cfg-auto-close-tags"><span class="switch-slider"></span></label>
+        </div>
+        <div class="settings-row settings-row-checkbox">
           <label for="cfg-smooth-scrolling">Smooth Scrolling</label>
           <label class="switch"><input type="checkbox" id="cfg-smooth-scrolling"><span class="switch-slider"></span></label>
         </div>
@@ -222,6 +312,18 @@
         </div>
       </div>
 
+      <div class="settings-section">
+        <div class="settings-section-title">Customize</div>
+        <div class="settings-row">
+          <label>Keyboard shortcuts</label>
+          <button type="button" class="btn-secondary" id="btn-open-shortcuts">Open</button>
+        </div>
+        <div class="settings-row">
+          <label>settings.json</label>
+          <button type="button" class="btn-secondary" id="btn-open-settings-json">Edit</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -230,7 +332,7 @@
 <div class="quick-open-overlay" id="quick-open-overlay">
   <div class="quick-open-panel">
     <div class="quick-open-input-wrapper">
-      <i class="codicon codicon-search"></i>
+      <i class="zi zi-search"></i>
       <input type="text" id="quick-open-input" placeholder="Go to file..." autocomplete="off">
     </div>
     <ul id="quick-open-list" class="quick-open-list"></ul>
@@ -239,6 +341,223 @@
 
 <!-- Notifications (toasts), bottom-right -->
 <div id="notification-container" class="notification-container"></div>
+
+<!-- Welcome page: visible on the first visit and from Help > Show Welcome Page (see js/landing.js) -->
+<div id="landing" hidden role="dialog" aria-label="Welcome to Zern">
+  <header class="l-top"><div class="l-wrap">
+    <a class="l-logo" id="l-logo" href="#l-top" aria-label="Zern home (right-click for logo files)"><img src="assets/logo/logo-64.png" alt="" width="26" height="26">Zern</a>
+    <nav class="l-nav" aria-label="Main">
+      <div class="l-dd">
+        <button class="l-navbtn" type="button" aria-haspopup="true" aria-expanded="false" data-dd="l-dd-product">Product<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 4.2 6 8l4-3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="l-pop" id="l-dd-product" role="menu" hidden>
+          <a role="menuitem" href="#l-features"><b>Features</b><span>What the editor does</span></a>
+          <a role="menuitem" href="#l-ext"><b>Extensions</b><span>Seven verified, built in</span></a>
+          <a role="menuitem" href="#l-keys"><b>Keyboard shortcuts</b><span>Everything from the keyboard</span></a>
+          <a role="menuitem" href="#l-download"><b>Download</b><span>Linux .deb or the web</span></a>
+        </div>
+      </div>
+      <div class="l-dd">
+        <button class="l-navbtn" type="button" aria-haspopup="true" aria-expanded="false" data-dd="l-dd-res">Resources<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 4.2 6 8l4-3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="l-pop" id="l-dd-res" role="menu" hidden>
+          <a role="menuitem" href="#l-faq"><b>FAQ</b><span>Short answers</span></a>
+          <a role="menuitem" href="https://github.com/wh2tedev/zern" target="_blank" rel="noopener noreferrer"><b>GitHub</b><span>Source code and issues</span></a>
+          <a role="menuitem" href="https://github.com/wh2tedev/zern/releases" target="_blank" rel="noopener noreferrer"><b>Releases</b><span>Downloads and release notes</span></a>
+          <a role="menuitem" href="https://github.com/wh2tedev/zern/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer"><b>Changelog</b><span>What changed in each version</span></a>
+        </div>
+      </div>
+    </nav>
+    <a class="l-gh" href="https://github.com/wh2tedev/zern" target="_blank" rel="noopener noreferrer" aria-label="Zern on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.22 1.88.87 2.34.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+    <button class="l-btn p l-web-only" data-l-open type="button">Try on web</button>
+    <button class="l-btn p l-desk-only" data-l-open type="button" hidden>Open Zern</button>
+  </div></header>
+
+  <main>
+  <section class="l-hero" id="l-top"><div class="l-wrap">
+    <h1>A calm code editor for the web and Linux.</h1>
+    <p class="l-sub">Zern runs the VS Code editor engine, works on your real folders and keeps going without a connection. Free, open source, no account.</p>
+    <div class="l-cta">
+      <a class="l-btn p lg l-web-only" id="l-dl" href="https://github.com/wh2tedev/zern/releases/latest" target="_blank" rel="noopener noreferrer">Download for Linux (.deb)</a>
+      <button class="l-btn lg l-web-only" data-l-open type="button">Try on web</button>
+      <button class="l-btn p lg l-desk-only" data-l-open type="button" hidden>Open Zern</button>
+    </div>
+    <div class="l-install l-web-only"><code id="l-cmd">sudo apt install ./zern*.deb</code><button class="l-copy" type="button" data-copy-target="l-cmd">Copy</button></div>
+    <p class="l-note">Version 1.0.0-rc.11 · Linux ARM64 (.deb) for Debian and Ubuntu · or open it in Chrome, Edge or any browser.</p>
+
+    <div class="l-stage">
+      <div class="l-sw" role="group" aria-label="Try a theme">
+        <button type="button" data-t="dark" aria-pressed="true"><b style="background:#121314"></b>Dark 2026</button>
+        <button type="button" data-t="nordic" aria-pressed="false"><b style="background:#2e3440"></b>Nordic</button>
+        <button type="button" data-t="monokai" aria-pressed="false"><b style="background:#272822"></b>Monokai</button>
+        <button type="button" data-t="light" aria-pressed="false"><b style="background:#fff"></b>Light Modern</button>
+      </div>
+      <div class="l-ed" id="l-ed" data-t="dark" role="img" aria-label="Zern editor preview">
+        <div class="l-bar"><i></i><i></i><i></i><span>auth.js — my-project</span></div>
+        <div class="l-body">
+          <div class="l-tree"><div>▾ src</div><div class="d on">auth.js</div><div class="d">api.js</div><div class="d">utils.py</div><div>▸ assets</div><div>index.html</div><div>README.md</div></div>
+          <div class="l-code" aria-hidden="true"><p data-n="1"><span class="c">// Validate the user session</span></p>
+<p data-n="2"><span class="k">import</span> { <span class="f">fetchUser</span> } <span class="k">from</span> <span class="s">'./api.js'</span>;</p>
+<p data-n="3"></p>
+<p data-n="4"><span class="k">export async function</span> <span class="f">login</span>(email, pass) {</p>
+<p data-n="5" class="hl">  <span class="k">const</span> user = <span class="k">await</span> <span class="f">fetchUser</span>(email);<span class="l-caret"></span></p>
+<p data-n="6">  <span class="k">if</span> (!user) <span class="k">throw new</span> <span class="t">Error</span>(<span class="s">'User not found'</span>);</p>
+<p data-n="7">  <span class="k">return</span> { ok: <span class="n">true</span>, id: user.id };</p>
+<p data-n="8">}</p></div>
+        </div>
+        <div class="l-stat"><span>Real folder · Autosave on</span><span>Ln 5, Col 41 · javascript</span></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="l-sec" id="l-features"><div class="l-wrap">
+    <p class="l-eyebrow">Features</p>
+    <h2>Everything a desktop editor does. Nothing it makes you wait for.</h2>
+    <div class="l-grid">
+      <article class="l-card"><div class="l-viz l-pal"><i style="background:#121314"></i><i style="background:#1e1e1e"></i><i style="background:#2e3440"></i><i style="background:#272822"></i><i style="background:#1e1729"></i><i style="background:#fff"></i></div>
+        <div class="l-txt"><h3>Eight full themes</h3><p>Dark 2026, Nordic, Monokai, Light Modern and more. They restyle the whole editor, not just the code colors.</p></div></article>
+      <article class="l-card"><div class="l-viz l-off"><span><i></i>offline mode active</span></div>
+        <div class="l-txt"><h3>Works offline</h3><p>After your first visit Zern installs like an app and opens without internet. The desktop app never needs it.</p></div></article>
+      <article class="l-card"><div class="l-viz l-tabs2"><span>app.py</span><span>style.css</span><span>index.html</span></div>
+        <div class="l-txt"><h3>Your real files</h3><p>Open a folder from your computer and save straight into it. Or use a virtual project and export it as a ZIP.</p></div></article>
+      <article class="l-card"><div class="l-viz"><span class="l-jump">const r = <u>calculateTotal</u>(items);<br><em>→ utils.py : line 12</em></span></div>
+        <div class="l-txt"><h3>Go to definition</h3><p>Press F12 or Ctrl+click to jump between the functions and classes of your open files. Autocomplete covers 25+ languages.</p></div></article>
+      <article class="l-card"><div class="l-viz l-tabs2"><span>main.js · Ln 42</span><span>api.js · Ln 7</span></div>
+        <div class="l-txt"><h3>Pick up where you left off</h3><p>Reload and your tabs come back, with the cursor line and scroll position of each file.</p></div></article>
+      <article class="l-card"><div class="l-viz l-gh2"><span>⎇ main</span><span>↓ 2</span><span>● 3 changes</span></div>
+        <div class="l-txt"><h3>GitHub built in</h3><p>Open a repository, review changes, commit and push from the sidebar. Your token stays in the system keyring on desktop.</p></div></article>
+    </div>
+  </div></section>
+
+  <section class="l-sec" id="l-ext"><div class="l-wrap">
+    <p class="l-eyebrow">Extensions</p>
+    <h2>Seven extensions, all made by the Zern team.</h2>
+    <p class="l-lead">Install, disable or remove them from the Extensions view (Ctrl+Shift+X). Only extensions published by Zern are available, marked with a verified badge.</p>
+    <ul class="l-ext">
+      <li><b>HTML Preview</b><span>Live preview next to the editor, with console and device sizes.</span><kbd>Ctrl+Alt+V</kbd></li>
+      <li><b>Markdown Preview</b><span>Rendered Markdown that follows your edits, with scroll sync.</span><kbd>Ctrl+Alt+M</kbd></li>
+      <li><b>Text Tools</b><span>Change case, sort and clean lines, encode text, insert UUIDs and dates.</span></li>
+      <li><b>TODO Tree</b><span>Finds TODO, FIXME and NOTE comments across the project.</span></li>
+      <li><b>JSON Tools</b><span>Format, minify, sort and validate JSON.</span></li>
+      <li><b>Save Actions</b><span>Trims whitespace and fixes the final newline when you save.</span></li>
+      <li><b>Markdown Tools</b><span>Table of contents and table alignment.</span></li>
+    </ul>
+  </div></section>
+
+  <section class="l-sec" id="l-keys"><div class="l-wrap">
+    <p class="l-eyebrow">Keyboard</p>
+    <h2>Everything is one shortcut away.</h2>
+    <p class="l-lead">Rebind any of them in File &gt; Keyboard Shortcuts, or edit them as JSON in File &gt; Settings (JSON).</p>
+    <dl class="l-keys">
+      <div><dt><kbd>Ctrl</kbd><kbd>P</kbd></dt><dd>Go to file</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>Q</kbd></dt><dd>All commands</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd></dt><dd>Search in project</dd></div>
+      <div><dt><kbd>F12</kbd></dt><dd>Go to definition</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>X</kbd></dt><dd>Extensions</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>G</kbd></dt><dd>Source control</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>B</kbd></dt><dd>Toggle sidebar</dd></div>
+      <div><dt><kbd>Ctrl</kbd><kbd>S</kbd></dt><dd>Save</dd></div>
+    </dl>
+  </div></section>
+
+  <section class="l-sec" id="l-download"><div class="l-wrap">
+    <div class="l-final">
+      <h2>Get Zern.</h2>
+      <div class="l-dl-grid">
+        <div class="l-dl-card"><h3>Linux desktop</h3><p>A .deb package for Debian and Ubuntu (ARM64). Download it from GitHub Releases and install:</p>
+          <div class="l-install dark"><code id="l-cmd2">sudo apt install ./zern*.deb</code><button class="l-copy" type="button" data-copy-target="l-cmd2">Copy</button></div>
+          <a class="l-btn w" href="https://github.com/wh2tedev/zern/releases/latest" target="_blank" rel="noopener noreferrer">Download for Linux (.deb)</a></div>
+        <div class="l-dl-card"><h3>In your browser</h3><p>Nothing to install. Chrome and Edge can open real folders; Firefox and Safari use a virtual project and GitHub.</p>
+          <button class="l-btn w" data-l-open type="button">Try on web</button></div>
+      </div>
+      <p class="l-small">Windows and macOS builds are not available yet.</p>
+    </div>
+  </div></section>
+
+  <section class="l-sec" id="l-faq"><div class="l-wrap l-narrow">
+    <p class="l-eyebrow">FAQ</p>
+    <h2>Short answers.</h2>
+    <details><summary>Is Zern free?</summary><p>Yes. Zern is open source under the MIT license. There is no account and nothing to pay.</p></details>
+    <details><summary>Where are my files, and what do you collect?</summary><p>Your files stay in your browser or on your disk. Zern has no analytics and no server of its own. The only things it contacts are GitHub (when you use the GitHub features) and Google Fonts (for the typefaces). Read the <a href="#" data-legal="privacy">Privacy</a> page for the details.</p></details>
+    <details><summary>Does it work offline?</summary><p>Yes. The web version caches itself after the first visit, and the desktop app ships with everything it needs. Without a connection the typefaces fall back to your system fonts.</p></details>
+    <details><summary>Which browsers are supported?</summary><p>Chrome and Edge support everything, including real folders. Firefox and Safari support virtual projects and GitHub.</p></details>
+    <details><summary>Is it the same as VS Code?</summary><p>No. Zern is an independent project built on the Monaco editor, the engine behind VS Code. It is not affiliated with or endorsed by Microsoft or GitHub.</p></details>
+  </div></section>
+  </main>
+
+  <footer class="l-foot"><div class="l-wrap">
+    <div class="l-foot-grid">
+      <div class="l-foot-brand">
+        <a class="l-logo" href="#l-top"><img src="assets/logo/logo-64.png" alt="" width="22" height="22">Zern</a>
+        <p>A calm code editor for the web and Linux.</p>
+        <p>Founded by <a href="https://github.com/wh2tedev" target="_blank" rel="noopener noreferrer">wh2tedev</a></p>
+      </div>
+      <nav aria-label="Product"><h4>Product</h4><a href="#l-features">Features</a><a href="#l-ext">Extensions</a><a href="#l-keys">Shortcuts</a><a href="#l-download">Download</a></nav>
+      <nav aria-label="Resources"><h4>Resources</h4><a href="https://github.com/wh2tedev/zern" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/wh2tedev/zern/releases" target="_blank" rel="noopener noreferrer">Releases</a><a href="https://github.com/wh2tedev/zern/issues" target="_blank" rel="noopener noreferrer">Report an issue</a><a href="#l-faq">FAQ</a></nav>
+      <nav aria-label="Legal"><h4>Legal</h4><a href="#" data-legal="terms">Terms</a><a href="#" data-legal="privacy">Privacy</a><a href="#" data-legal="licenses">Open-source licenses</a></nav>
+    </div>
+    <div class="l-foot-bottom">
+      <span>© 2026 Zern Code contributors · MIT License</span>
+      <span>Editor powered by Monaco Editor (MIT, © Microsoft) · Icons: Codicons (CC BY 4.0) · Not affiliated with Microsoft or GitHub · <a href="#" data-legal="licenses">Third-party notices</a></span>
+    </div>
+  </div></footer>
+
+  <div id="l-legal" class="l-legal" hidden role="dialog" aria-modal="true" aria-labelledby="l-legal-title">
+    <div class="l-legal-box">
+      <div class="l-legal-head"><h2 id="l-legal-title"></h2><button type="button" data-l-legal-close aria-label="Close">×</button></div>
+      <div class="l-legal-body" id="l-legal-body" tabindex="0"></div>
+    </div>
+  </div>
+
+  <template id="l-tpl-terms" data-title="Terms of Use">
+    <p class="l-upd">Last updated: October 20, 2026</p>
+    <h3>1. The software</h3>
+    <p>Zern Code ("Zern") is free, open-source software released under the MIT License (see the LICENSE file in the repository). You may use, copy, modify and distribute it under that license.</p>
+    <h3>2. No warranty</h3>
+    <p>Zern is provided "as is", without warranty of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. This is a pre-release (release candidate) version and may contain bugs.</p>
+    <h3>3. Your content and your backups</h3>
+    <p>Your files and projects belong to you. Zern keeps virtual projects in your browser's storage and edits real folders directly on your disk. Browser data can be erased (for example by clearing site data), so keep your own backups. We are not responsible for lost or corrupted files.</p>
+    <h3>4. Third-party services</h3>
+    <p>If you connect your GitHub account, your use of GitHub is governed by GitHub's own terms and policies, and you are responsible for the access token you create and the permissions you give it. Typefaces are served by Google Fonts. See the Privacy page.</p>
+    <h3>5. Third-party components and trademarks</h3>
+    <p>Zern includes open-source components under their own licenses (see Open-source licenses). "Visual Studio Code" and "Monaco" are associated with Microsoft Corporation, and "GitHub" is a trademark of GitHub, Inc. Zern is independent and is not affiliated with, endorsed by or sponsored by them.</p>
+    <h3>6. Limitation of liability</h3>
+    <p>To the maximum extent permitted by law, the authors and contributors are not liable for any claim, damages or other liability arising from the use of Zern.</p>
+    <h3>7. Changes and contact</h3>
+    <p>These terms may change as Zern evolves; the date above shows the latest update. Questions or reports: <a href="https://github.com/wh2tedev/zern/issues" target="_blank" rel="noopener noreferrer">github.com/wh2tedev/zern/issues</a>.</p>
+  </template>
+
+  <template id="l-tpl-privacy" data-title="Privacy Policy">
+    <p class="l-upd">Last updated: October 20, 2026</p>
+    <p>Short version: Zern has no accounts, no analytics and no server of its own. Your files stay on your device.</p>
+    <h3>What stays on your device</h3>
+    <p>Virtual projects, open tabs, settings and shortcuts are stored in your browser (IndexedDB and localStorage). Real folders are read and written directly on your disk. The web version also stores a copy of its own files (service worker cache) so it works offline. The desktop app stores your window size and position in a small local file. None of this is sent anywhere.</p>
+    <h3>What is sent over the network</h3>
+    <p><b>GitHub</b> (api.github.com): only when you use the GitHub features. Your access token and the repository data you request are sent to GitHub, nothing else. The desktop app keeps the token in the system keyring. The web version keeps it for the session only, or encrypted with a passphrase if you choose "Remember on this device".</p>
+    <p><b>Google Fonts</b> (fonts.googleapis.com, fonts.gstatic.com): the page requests the Inter, Lora and JetBrains Mono typefaces from Google when it loads. Google receives your IP address and browser details, as with any request, under Google's own privacy policy. If you are offline or the request fails, your system fonts are used.</p>
+    <p><b>jsDelivr</b> (cdn.jsdelivr.net): used only as a fallback if the bundled copy of the editor engine or of JSZip is missing, which does not happen in official builds.</p>
+    <p><b>Where you open Zern</b>: whoever hosts the copy of Zern you open (for example a web server) may keep standard server logs. Zern cannot see or control them.</p>
+    <h3>What Zern does not do</h3>
+    <p>It does not use cookies for tracking, does not include analytics or advertising, does not collect personal data and does not upload your code. Extensions are published by the Zern team and run inside the app.</p>
+    <h3>Your choices</h3>
+    <p>You can remove your data at any time by clearing the site's data in your browser or by uninstalling the desktop app. You can sign out of GitHub from the Source Control view.</p>
+    <h3>Contact</h3>
+    <p>Questions: <a href="https://github.com/wh2tedev/zern/issues" target="_blank" rel="noopener noreferrer">github.com/wh2tedev/zern/issues</a>.</p>
+  </template>
+
+  <template id="l-tpl-licenses" data-title="Open-source licenses">
+    <p>Zern is MIT licensed. It includes or loads the following third-party components.</p>
+    <ul class="l-lic">
+      <li><b>Monaco Editor 0.57.0</b> · MIT · © Microsoft Corporation. <a href="https://github.com/microsoft/monaco-editor" target="_blank" rel="noopener noreferrer">Source</a>. Includes the TypeScript language service (Apache-2.0, © Microsoft Corporation) and other components listed in Monaco's <a href="https://github.com/microsoft/monaco-editor/blob/main/ThirdPartyNotices.txt" target="_blank" rel="noopener noreferrer">ThirdPartyNotices.txt</a>.</li>
+      <li><b>Codicons</b> · code MIT, icons CC BY 4.0 · © Microsoft Corporation. No changes were made to the icons. <a href="https://github.com/microsoft/vscode-codicons" target="_blank" rel="noopener noreferrer">Source</a></li>
+      <li><b>JSZip</b> · MIT (dual-licensed MIT or GPL-3.0-or-later; used under MIT) · © Stuart Knightley, David Duponchel, Franz Buchinger, Antonio Afonso. <a href="https://github.com/Stuk/jszip" target="_blank" rel="noopener noreferrer">Source</a></li>
+      <li><b>Inter, Lora, JetBrains Mono</b> · SIL Open Font License 1.1 · © The Inter Project Authors, © The Lora Project Authors, © The JetBrains Mono Project Authors. Served by Google Fonts.</li>
+      <li><b>Electron and Chromium</b> (desktop app) · MIT, and Chromium's own licenses included with the installer.</li>
+      <li><b>Color palettes</b> · Dark+/Light+/Dark Modern/Light Modern follow the VS Code default themes (MIT, © Microsoft Corporation). Nordic uses the Nord palette (MIT, © Sven Greb).</li>
+    </ul>
+    <p>"Visual Studio Code" and "Monaco" are associated with Microsoft Corporation. "GitHub" is a trademark of GitHub, Inc. Zern is not affiliated with them.</p>
+    <details id="l-notice-d"><summary>Full notice text (THIRD_PARTY_NOTICES.txt)</summary><pre id="l-notice-pre">Loading…</pre></details>
+  </template>
+</div>
+<script src="js/boot.js"></script>
 
 <script type="module" src="js/app.js"></script>
 </body>

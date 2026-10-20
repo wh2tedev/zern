@@ -1,7 +1,7 @@
 // ============================================================
 // icons.js - UI icons using real VS Code Codicons (folders,
 // context menu). FILE icons by extension keep using your own
-// language logos, untouched by theme or codicon changes.
+// language logos, untouched by theme or zi changes.
 // ============================================================
 import { getFileExtension } from './fs-utils.js';
 
@@ -105,14 +105,19 @@ export function getFileIcon(filename) {
 // ---------- FOLDER icons -> real Codicons ----------
 export function getFolderIcon(expanded) {
   return expanded
-    ? '<i class="codicon codicon-folder-opened folder-codicon"></i>'
-    : '<i class="codicon codicon-folder folder-codicon"></i>';
+    ? '<i class="zi zi-folder-opened folder-zi"></i>'
+    : '<i class="zi zi-folder folder-zi"></i>';
 }
 
 // ---------- Context menu icons -> real Codicons ----------
 export const MENU_ICONS = {
-  newFile: '<i class="codicon codicon-new-file"></i>',
-  newFolder: '<i class="codicon codicon-new-folder"></i>',
-  rename: '<i class="codicon codicon-edit"></i>',
-  delete: '<i class="codicon codicon-trash"></i>',
+  newFile: '<i class="zi zi-new-file"></i>',
+  newFolder: '<i class="zi zi-new-folder"></i>',
+  rename: '<i class="zi zi-edit"></i>',
+  delete: '<i class="zi zi-trash"></i>',
+  duplicate: '<i class="zi zi-files"></i>',
+  copy: '<i class="zi zi-copy"></i>',
+  close: '<i class="zi zi-close"></i>',
+  closeAll: '<i class="zi zi-close-all"></i>',
+  reveal: '<i class="zi zi-folder-opened"></i>',
 };

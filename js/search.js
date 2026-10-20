@@ -11,6 +11,7 @@ import { openFileInEditor, scheduleVirtualFsSave, updateTabModifiedIndicator } f
 import { updateExplorerModifiedIndicator } from './explorer.js';
 import { getFileIcon } from './icons.js';
 import { showToast } from './notifications.js';
+import { escapeHtml } from './escape.js';
 
 let inputEl, resultsEl, summaryEl, clearBtn, replaceInputEl, replaceAllBtn;
 let debounceTimer = null;
@@ -222,10 +223,6 @@ function findMatches(content, qLower) {
   return matches;
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 function renderResults(query, fileResults) {
   resultsEl.innerHTML = '';
   const totalMatches = fileResults.reduce((sum, f) => sum + f.matches.length, 0);
@@ -263,7 +260,7 @@ function renderResults(query, fileResults) {
     const replaceFileBtn = document.createElement('button');
     replaceFileBtn.className = 'search-replace-file';
     replaceFileBtn.title = 'Replace all matches in this file';
-    replaceFileBtn.innerHTML = '<i class="codicon codicon-replace-all"></i>';
+    replaceFileBtn.innerHTML = '<i class="zi zi-replace-all"></i>';
     replaceFileBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       runReplaceInFile(fileResult);
@@ -294,7 +291,7 @@ function renderResults(query, fileResults) {
       const replaceOneBtn = document.createElement('button');
       replaceOneBtn.className = 'search-replace-one';
       replaceOneBtn.title = 'Replace this match';
-      replaceOneBtn.innerHTML = '<i class="codicon codicon-replace"></i>';
+      replaceOneBtn.innerHTML = '<i class="zi zi-replace"></i>';
       replaceOneBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         runReplaceOne(fileResult, match);
@@ -335,7 +332,7 @@ function openMatch(fileResult, match) {
     AppState.editorInstance.focus();
   }
 
-  document.dispatchEvent(new CustomEvent('kcode:file-opened'));
+  document.dispatchEvent(new CustomEvent('zern:file-opened'));
 }
 
 // ---------------- Find & Replace ----------------

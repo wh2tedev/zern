@@ -187,6 +187,40 @@ export async function clearVirtualFileSystem() {
   });
 }
 
+// ---------------- Named workspaces (GitHub repositories) ----------------
+// Each opened repository keeps its own record (file tree + commit metadata +
+// uncommitted changes) next to the scratch virtual project, which is never touched.
+
+export async function saveWorkspace(id, record) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIRTUAL_FS_STORE, 'readwrite');
+    tx.objectStore(VIRTUAL_FS_STORE).put(record, `ws:${id}`);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = (event) => reject(event.target.error);
+  });
+}
+
+export async function getWorkspace(id) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIRTUAL_FS_STORE, 'readonly');
+    const request = tx.objectStore(VIRTUAL_FS_STORE).get(`ws:${id}`);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = (event) => reject(event.target.error);
+  });
+}
+
+export async function deleteWorkspace(id) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIRTUAL_FS_STORE, 'readwrite');
+    tx.objectStore(VIRTUAL_FS_STORE).delete(`ws:${id}`);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = (event) => reject(event.target.error);
+  });
+}
+
 // ---------------- Permissions ----------------
 
 /**

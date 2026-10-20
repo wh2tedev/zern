@@ -1,0 +1,19 @@
+/* ============================================================
+   desktop.css - Frameless desktop window: the title bar is the
+   drag area and carries Minimize / Maximize / Close (VS Code style).
+   Only active when the page runs inside the Electron app.
+   ============================================================ */
+.is-desktop .title-bar { -webkit-app-region: drag; padding-right: 0; user-select: none; }
+.is-desktop .title-bar button,
+.is-desktop .title-bar nav,
+.is-desktop .title-bar input { -webkit-app-region: no-drag; }
+.is-desktop .title-right { align-self: stretch; }
+.win-controls { display: flex; align-self: stretch; margin-left: 6px; }
+.win-btn {
+  width: 46px; height: 100%; display: grid; place-items: center; padding: 0;
+  background: transparent; border: 0; border-radius: 0; color: var(--vscode-text); cursor: default;
+}
+.win-btn .zi { font-size: 16px; }
+.win-btn:hover { background: color-mix(in srgb, var(--vscode-text) 13%, transparent); }
+.win-btn:active { background: color-mix(in srgb, var(--vscode-text) 20%, transparent); }
+.win-btn.close:hover, .win-btn.close:active { background: #e81123; color: #fff; }

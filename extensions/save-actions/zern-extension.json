@@ -1,0 +1,24 @@
+{
+  "id": "zern.save-actions",
+  "name": "save-actions",
+  "displayName": "Save Actions",
+  "publisher": "Zern",
+  "version": "1.0.0",
+  "description": "Tidies a file every time you save it: trims trailing whitespace and fixes the final newline.",
+  "icon": "icon.svg",
+  "categories": ["Formatters", "Productivity"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "contributes": {
+    "commands": [
+      { "command": "saveActions.run", "title": "Save Actions: Tidy the Current File Now" }
+    ],
+    "settings": [
+      { "key": "trimTrailingWhitespace", "type": "boolean", "title": "Trim trailing whitespace", "description": "Remove spaces and tabs at the end of every line.", "default": true },
+      { "key": "skipMarkdown", "type": "boolean", "title": "Keep trailing spaces in Markdown", "description": "Two spaces at the end of a Markdown line mean a line break, so they are left alone.", "default": true },
+      { "key": "insertFinalNewline", "type": "boolean", "title": "Insert final newline", "description": "End the file with exactly one line break.", "default": true },
+      { "key": "trimFinalNewlines", "type": "boolean", "title": "Remove extra blank lines at the end", "description": "Collapse several empty lines at the end of the file into one line break.", "default": true }
+    ]
+  }
+}

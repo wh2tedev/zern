@@ -1,29 +1,49 @@
 {
-  "name": "kcode",
-  "version": "0.9.0",
-  "description": "KCode Web Code Editor",
-  "author": "wh2tedev <wh2tedev@example.com>",
+  "name": "zern",
+  "version": "1.0.0-rc.11",
+  "description": "Zern Code - code editor for the browser and desktop",
+  "author": "Zern Code contributors <noreply@zern.invalid>",
   "main": "main.js",
   "scripts": {
-    "build:arm64": "electron-builder --linux deb --arm64"
+    "start": "electron .",
+    "vendor": "node scripts/vendor.js",
+    "catalog": "node scripts/build-catalog.js",
+    "prebuild:arm64": "npm run catalog && npm run vendor",
+    "build:arm64": "electron-builder --linux deb --arm64",
+    "icons": "node scripts/build-icons.js",
+    "test": "node tests/run.js",
+    "catalog:check": "node scripts/build-catalog.js --check",
+    "test:e2e": "node e2e/run.js"
   },
   "devDependencies": {
     "electron": "^30.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "jszip": "3.10.1"
   },
   "build": {
-    "appId": "com.kcode.editor",
-    "productName": "KCode",
+    "appId": "com.zern.editor",
+    "productName": "Zern Code",
     "files": [
       "index.html",
       "css/**/*",
       "js/**/*",
       "assets/**/*",
-      "main.js"
+      "extensions/**/*",
+      "main.js",
+      "preload.js",
+      "window-state.js",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.txt"
     ],
     "linux": {
-      "target": ["deb"],
-      "category": "Development"
+      "target": [
+        "deb"
+      ],
+      "category": "Development",
+      "icon": "assets/logo/logo-512.png",
+      "synopsis": "Minimal code editor",
+      "maintainer": "Zern Code contributors <noreply@zern.invalid>"
     }
-  }
+  },
+  "license": "MIT"
 }

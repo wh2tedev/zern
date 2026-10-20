@@ -17,6 +17,53 @@ function joinPath(parentPath, name) {
   return normalizePath(parentPath === '/' ? `/${name}` : `${parentPath}/${name}`);
 }
 
+/**
+ * Path as the user would want to paste it: "myfolder/src/app.js" for a
+ * real folder (the browser never exposes the absolute disk path, so the
+ * opened folder's name is the closest we can get), "/src/app.js" for the
+ * virtual filesystem.
+ */
+export function getDisplayPath(path) {
+  const norm = normalizePath(path);
+  if (AppState.isRealFS && AppState.rootDirHandle) {
+    return norm === '/' ? AppState.rootDirHandle.name : `${AppState.rootDirHandle.name}${norm}`;
+  }
+  return norm;
+}
+
+/** Path relative to the project root, e.g. "src/app.js". */
+export function getRelativePath(path) {
+  const norm = normalizePath(path);
+  return norm === '/' ? '' : norm.slice(1);
+}
+
+// ---------------- Duplicate naming ----------------
+
+/**
+ * Picks a free "copy" name the way VS Code does:
+ *   file.txt -> "file copy.txt" -> "file copy 2.txt" -> ...
+ *   folder   -> "folder copy"   -> "folder copy 2"   -> ...
+ * Dotfiles (".gitignore") are treated as having no extension.
+ * Name comparison is case-insensitive (safe on Windows/macOS disks).
+ * @param {string} name original name
+ * @param {boolean} isFolder folders never get their last dot treated as an extension
+ * @param {Iterable<string>} existingNames names already present in the target folder
+ */
+export function getDuplicateName(name, isFolder, existingNames) {
+  const taken = new Set(Array.from(existingNames, (n) => n.toLowerCase()));
+  const dot = isFolder ? -1 : name.lastIndexOf('.');
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+
+  let candidate = `${base} copy${ext}`;
+  let n = 2;
+  while (taken.has(candidate.toLowerCase())) {
+    candidate = `${base} copy ${n}${ext}`;
+    n++;
+  }
+  return candidate;
+}
+
 // ---------------- Real FS (File System Access API) ----------------
 
 export async function realRenameFile(parentHandle, oldName, newName) {
@@ -33,7 +80,7 @@ export async function realRenameFile(parentHandle, oldName, newName) {
   return newFileHandle;
 }
 
-async function copyDirRecursive(sourceDirHandle, destDirHandle) {
+export async function copyDirRecursive(sourceDirHandle, destDirHandle) {
   for await (const [name, handle] of sourceDirHandle.entries()) {
     if (handle.kind === 'file') {
       const file = await handle.getFile();
@@ -168,6 +215,33 @@ export function virtualMoveFolder(sourcePath, targetParentPath, newName) {
   return newPath;
 }
 
+/**
+ * Moves a file OR folder node to another parent, optionally renaming it. The node
+ * object itself is moved, so everything stored on it (e.g. the GitHub blob sha of a
+ * file whose content hasn't been downloaded yet) travels with it.
+ */
+export function virtualMoveNode(sourcePath, targetParentPath, newName) {
+  const node = findInTree(AppState.fileSystem, sourcePath);
+  if (!node) return null;
+  removeNode(AppState.fileSystem, sourcePath);
+  const newPath = joinPath(targetParentPath, newName);
+  node.name = newName;
+  renumberPaths(node, newPath);
+  insertNode(AppState.fileSystem, targetParentPath, node);
+  sortTree(AppState.fileSystem);
+  return newPath;
+}
+
+/** Re-inserts a deep copy of a (possibly deleted) node under parentPath, metadata included. */
+export function virtualInsertSnapshot(parentPath, snapshot) {
+  const clone = JSON.parse(JSON.stringify(snapshot));
+  if (clone.type === 'folder') clone.expanded = false;
+  renumberPaths(clone, joinPath(parentPath, clone.name));
+  const inserted = insertNode(AppState.fileSystem, parentPath, clone);
+  if (inserted) sortTree(AppState.fileSystem);
+  return inserted;
+}
+
 export function virtualCreateFile(parentPath, name, content = '') {
   const inserted = insertNode(AppState.fileSystem, parentPath, {
     name, type: 'file', path: joinPath(parentPath, name), content,
@@ -182,4 +256,59 @@ export function virtualCreateFolder(parentPath, name) {
   });
   if (inserted) sortTree(AppState.fileSystem);
   return inserted;
+}
+
+// ---------------- Duplicate ----------------
+
+/**
+ * Duplicates a file or folder inside the same real parent directory.
+ * Reuses the same read/write and recursive-copy primitives as rename
+ * and move, but never deletes the original.
+ * @returns {Promise<string>} the name of the new copy
+ */
+export async function realDuplicateEntry(parentHandle, name, isFolder) {
+  const names = [];
+  for await (const [entryName] of parentHandle.entries()) names.push(entryName);
+  const newName = getDuplicateName(name, isFolder, names);
+
+  if (isFolder) {
+    const sourceDir = await parentHandle.getDirectoryHandle(name);
+    const destDir = await parentHandle.getDirectoryHandle(newName, { create: true });
+    await copyDirRecursive(sourceDir, destDir);
+  } else {
+    const sourceHandle = await parentHandle.getFileHandle(name);
+    const file = await sourceHandle.getFile();
+    const content = await file.arrayBuffer();
+    const destHandle = await parentHandle.getFileHandle(newName, { create: true });
+    const writable = await destHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }
+  return newName;
+}
+
+/**
+ * Duplicates a node (and all its descendants) of the virtual tree next
+ * to the original. Works on a deep clone, then renumbers every path.
+ * @returns {{newPath: string, newName: string}|null}
+ */
+export function virtualDuplicate(path) {
+  const node = findInTree(AppState.fileSystem, path);
+  if (!node) return null;
+
+  const parentPath = getParentPath(node.path);
+  const parent = findFolderByPath(AppState.fileSystem, parentPath);
+  if (!parent) return null;
+
+  const newName = getDuplicateName(node.name, node.type === 'folder', (parent.children || []).map((c) => c.name));
+  const newPath = joinPath(parentPath, newName);
+
+  const clone = JSON.parse(JSON.stringify(node));
+  clone.name = newName;
+  if (clone.type === 'folder') clone.expanded = false;
+  renumberPaths(clone, newPath);
+
+  insertNode(AppState.fileSystem, parentPath, clone);
+  sortTree(AppState.fileSystem);
+  return { newPath, newName };
 }

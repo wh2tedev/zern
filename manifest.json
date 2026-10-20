@@ -1,7 +1,7 @@
 {
-  "name": "KCode",
-  "short_name": "KCode",
-  "description": "A VS Code-inspired code editor with a real/virtual file explorer, Monaco editor, and multiple themes",
+  "name": "Zern Code",
+  "short_name": "Zern",
+  "description": "Zern Code: a minimal code editor for the browser and desktop, built on the VS Code engine",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",

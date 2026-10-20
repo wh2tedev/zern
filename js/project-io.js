@@ -8,6 +8,7 @@ import { AppState } from './state.js';
 import { walkTree, normalizePath, sortTree } from './fs-utils.js';
 import { showToast } from './notifications.js';
 import { scheduleVirtualFsSave } from './editor.js';
+import { ensureNodeContent } from './node-content.js';
 
 /**
  * Exports the current virtual file tree as a .zip and triggers a
@@ -20,6 +21,12 @@ export async function exportProjectAsZip() {
   }
 
   const zip = new window.JSZip();
+
+  // GitHub repositories list files first and download them lazily: fetch the rest now
+  // so the ZIP is complete (binary files are skipped, they can't be shown as text).
+  const pending = [];
+  walkTree(AppState.fileSystem, (node) => { if (node.type === 'file' && typeof node.content !== 'string' && node.sha) pending.push(node); });
+  for (const node of pending) await ensureNodeContent(node);
 
   walkTree(AppState.fileSystem, (node) => {
     if (node.type !== 'file') return;

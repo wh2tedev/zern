@@ -4,24 +4,37 @@
 // relative imports don't get flagged as errors.
 // ============================================================
 
-export function setupIntelliSense(monacoNS) {
-  // Turn off semantic validation for JS/TS (unresolved imports, types)
-  // while keeping syntax validation (real typos are still flagged).
-  monacoNS.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-    noSemanticValidation: true,
-    noSyntaxValidation: false,
-  });
-  monacoNS.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-    noSemanticValidation: true,
-    noSyntaxValidation: false,
-  });
-  monacoNS.languages.typescript.javascriptDefaults.setCompilerOptions({
-    target: monacoNS.languages.typescript.ScriptTarget.ES2020,
+let tsNS = null;
+
+// Semantic errors that only exist because Zern has no node_modules / type packages:
+// "Cannot find module", missing declaration files, "Cannot find name 'require'/'process'/test globals".
+// They would drown the Problems panel in noise, so they are always ignored.
+const NOISY_CODES = [2307, 2792, 7016, 2580, 2591, 2582, 2688];
+
+/**
+ * Switches type checking of JS/TS files on or off. Off (default): only syntax errors are
+ * reported, which never produces false alarms. On: also real semantic errors (undefined
+ * variables, wrong argument types...) via the TypeScript service, minus the noisy codes above.
+ */
+export function setSemanticValidation(enabled) {
+  if (!tsNS) return;
+  const ts = tsNS.languages.typescript;
+  const diagnostics = { noSemanticValidation: !enabled, noSyntaxValidation: false, diagnosticCodesToIgnore: NOISY_CODES };
+  ts.javascriptDefaults.setDiagnosticsOptions(diagnostics);
+  ts.typescriptDefaults.setDiagnosticsOptions(diagnostics);
+  ts.javascriptDefaults.setCompilerOptions({
+    target: ts.ScriptTarget.ES2020,
     allowNonTsExtensions: true,
-    moduleResolution: monacoNS.languages.typescript.ModuleResolutionKind.NodeJs,
-    module: monacoNS.languages.typescript.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    module: ts.ModuleKind.ESNext,
     allowJs: true,
+    checkJs: !!enabled,
   });
+}
+
+export function setupIntelliSense(monacoNS, { semanticValidation = false } = {}) {
+  tsNS = monacoNS;
+  setSemanticValidation(semanticValidation);
 
   registerHtmlSnippets(monacoNS);
   registerJsSnippets(monacoNS);

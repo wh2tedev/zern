@@ -5,6 +5,7 @@
 // the virtual one, same as the rest of the app.
 // ============================================================
 
+import { ensureNodeContent } from './node-content.js';
 import { AppState } from './state.js';
 import { normalizePath, getLanguageFromExtension, walkTree, findFileByPath } from './fs-utils.js';
 import { openFileInEditor } from './editor.js';
@@ -154,6 +155,7 @@ async function selectFile(f) {
     if (f.isVirtual) {
       const node = findFileByPath(AppState.fileSystem, f.path);
       if (!node) return;
+      if (!(await ensureNodeContent(node))) return;
       openFileInEditor({
         path: node.path, name: node.name, content: node.content ?? '',
         language: getLanguageFromExtension(node.name), handle: null, isVirtual: true,
@@ -165,5 +167,5 @@ async function selectFile(f) {
     console.error('Quick Open: could not open file:', err);
   }
 
-  document.dispatchEvent(new CustomEvent('kcode:file-opened'));
+  document.dispatchEvent(new CustomEvent('zern:file-opened'));
 }

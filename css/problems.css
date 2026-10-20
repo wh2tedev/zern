@@ -1,0 +1,86 @@
+/* ============================================================
+   problems.css - Problems panel, status counters, error marks
+   (loaded after github.css so error colors win over Git colors)
+   ============================================================ */
+:root {
+  --problem-error: #f14c4c;      --problem-warning: #cca700;      --problem-info: #3794ff;
+  --problem-error-fg: #f88070;   --problem-warning-fg: #cca700;
+}
+body[data-theme="light-modern"], body[data-theme="light-plus"] {
+  --problem-error: #e51400;      --problem-warning: #bf8803;      --problem-info: #1a85ff;
+  --problem-error-fg: #b01011;   --problem-warning-fg: #895503;
+}
+.sev-error { color: var(--problem-error); }
+.sev-warning { color: var(--problem-warning); }
+.sev-info { color: var(--problem-info); }
+
+/* ---- Explorer + tabs ---- */
+.explorer-row.problem-error .explorer-label, .explorer-row.problem-error .git-badge { color: var(--problem-error-fg); }
+.explorer-row.problem-warning .explorer-label, .explorer-row.problem-warning .git-badge { color: var(--problem-warning-fg); }
+.git-badge.dot { font-size: 9px; }
+.editor-tab.problem-error .tab-label { color: var(--problem-error-fg); }
+.editor-tab.problem-warning .tab-label { color: var(--problem-warning-fg); }
+
+/* ---- Status bar counters ---- */
+.status-bar #status-problems { gap: 4px; }
+.status-bar #status-problems.active { background: color-mix(in srgb, var(--vscode-statusbar-fg) 14%, transparent); }
+
+/* ---- Bottom panel ---- */
+.bottom-panel {
+  position: relative; flex: none; display: flex; flex-direction: column; min-height: 0;
+  background: var(--vscode-bg); border-top: 1px solid var(--vscode-border);
+}
+.bottom-panel[hidden] { display: none; }
+.panel-sash { position: absolute; left: 0; right: 0; top: -3px; height: 6px; cursor: ns-resize; z-index: 6; touch-action: none; transition: background-color .1s ease .15s; }
+.panel-sash:hover, .panel-sash:active { background: var(--vscode-accent); }
+.panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 35px; padding: 0 8px 0 16px; flex-shrink: 0; }
+.panel-tabs { display: flex; align-items: center; }
+.panel-tab {
+  display: flex; align-items: center; gap: 6px; height: 35px; font-size: 11px; letter-spacing: .02em;
+  color: var(--vscode-text); border-bottom: 1px solid var(--vscode-text);
+}
+.panel-badge {
+  min-width: 18px; padding: 0 5px; border-radius: 9px; text-align: center; font-size: 11px; line-height: 16px;
+  background: var(--vscode-accent); color: #fff;
+}
+.panel-tools { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.panel-filter {
+  width: 190px; max-width: 30vw; height: 22px; padding: 0 8px; font: inherit; font-size: 12px; color: var(--vscode-text);
+  background: color-mix(in srgb, var(--vscode-text) 9%, transparent); border: 1px solid transparent; border-radius: 2px; outline: none;
+}
+.panel-filter:focus { border-color: var(--vscode-accent); }
+.sev-toggle, .panel-btn {
+  display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 6px; font: inherit; font-size: 12px;
+  color: var(--vscode-text-dim); background: transparent; border: none; border-radius: 5px; cursor: pointer;
+}
+.sev-toggle.on { color: var(--vscode-text); }
+.sev-toggle:not(.on) { opacity: .55; }
+.sev-toggle:hover, .panel-btn:hover { background: color-mix(in srgb, var(--vscode-text) 14%, transparent); }
+.sev-toggle .zi, .panel-btn .zi { font-size: 14px !important; }
+.sev-toggle[data-sev="error"] .zi { color: var(--problem-error); }
+.sev-toggle[data-sev="warning"] .zi { color: var(--problem-warning); }
+.sev-toggle[data-sev="info"] .zi { color: var(--problem-info); }
+
+.panel-body { flex: 1; min-height: 0; overflow: auto; font-size: 13px; }
+.problems-empty { padding: 12px 20px; color: var(--vscode-text-dim); }
+.problems-file, .problems-row { display: flex; align-items: center; gap: 6px; min-height: 22px; padding: 0 12px 0 8px; cursor: pointer; white-space: nowrap; }
+.problems-file:hover, .problems-row:hover { background: var(--vscode-hover-bg); }
+.problems-file:focus-visible, .problems-row:focus-visible { outline: 1px solid var(--vscode-accent); outline-offset: -1px; }
+.problems-file .zi { font-size: 16px !important; }
+.problems-file-icon { display: flex; width: 16px; height: 16px; }
+.problems-file-icon .file-icon-img { width: 16px; height: 16px; }
+.problems-file-name { font-weight: 600; }
+.problems-file-dir { color: var(--vscode-text-dim); font-size: 12px; }
+.problems-count {
+  min-width: 18px; padding: 0 5px; border-radius: 9px; text-align: center; font-size: 11px; line-height: 16px;
+  background: color-mix(in srgb, var(--vscode-text) 18%, transparent);
+}
+.problems-row { padding-left: 34px; }
+.problems-row .zi { font-size: 16px !important; flex-shrink: 0; }
+.problems-msg { overflow: hidden; text-overflow: ellipsis; }
+.problems-src, .problems-pos { color: var(--vscode-text-dim); font-size: 12px; flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .panel-filter { display: none; }
+  .panel-header { padding-left: 10px; }
+}

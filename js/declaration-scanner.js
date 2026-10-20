@@ -179,3 +179,147 @@ export function setupDeclarationScanner(monacoNS) {
     });
   });
 }
+
+// ============================================================
+// Go to Definition (F12 / Ctrl+click)
+//
+// Reuses the exact same LANGUAGE_PATTERNS as the completion
+// provider above, but this time keeps WHERE each name was found.
+// Registering a Monaco DefinitionProvider is all it takes for the
+// editor's built-in F12, Ctrl+click (with underline), Alt+F12 peek
+// and "Go to Definition" context-menu entry to start working.
+// ============================================================
+
+// Same languages, same regexes - just recompiled with the `d`
+// flag so every match also reports the exact index of the
+// captured name (not only of the whole match).
+const locationPatternCache = new Map();
+
+export function getLocationPatterns(lang) {
+  if (locationPatternCache.has(lang)) return locationPatternCache.get(lang);
+  const compiled = (LANGUAGE_PATTERNS[lang] || []).map(({ regex, kind }) => ({
+    regex: new RegExp(regex.source, regex.flags.includes('d') ? regex.flags : regex.flags + 'd'),
+    kind,
+  }));
+  locationPatternCache.set(lang, compiled);
+  return compiled;
+}
+
+/**
+ * Pure helper (no Monaco needed): finds every declaration of every
+ * name in `text`, with its offset and length.
+ * @returns {Map<string, Array<{offset: number, length: number, kind: string}>>}
+ */
+export function scanDeclarationLocations(text, patterns) {
+  const byName = new Map();
+  const seenOffsets = new Set();
+
+  for (const { regex, kind } of patterns) {
+    regex.lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text))) {
+      if (match[0] === '') regex.lastIndex++; // safety: never loop on empty matches
+      const name = match[1];
+      if (!name || name.length < 2) continue;
+      if (KEYWORD_BLOCKLIST.has(name)) continue;
+
+      const offset = match.indices && match.indices[1]
+        ? match.indices[1][0]
+        : match.index + match[0].lastIndexOf(name);
+
+      // e.g. `const f = () =>` matches both the arrow-function and the
+      // plain-variable pattern at the same spot: keep the first (more
+      // specific) one only.
+      if (seenOffsets.has(offset)) continue;
+      seenOffsets.add(offset);
+
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push({ offset, length: name.length, kind });
+    }
+  }
+
+  // A name that is declared as a function/class somewhere is looked up
+  // by that declaration; plain `x = ...` assignments of the same name
+  // are just noise. And for names that are ONLY variables, the first
+  // assignment is the declaration (later ones are re-assignments).
+  for (const [name, list] of byName) {
+    const strong = list.filter((l) => l.kind !== 'variable');
+    const chosen = strong.length ? strong : list.slice().sort((a, b) => a.offset - b.offset).slice(0, 1);
+    byName.set(name, chosen.sort((a, b) => a.offset - b.offset));
+  }
+  return byName;
+}
+
+const locationCache = new WeakMap();
+
+function getLocationsForModel(model, lang) {
+  const version = model.getVersionId();
+  const cached = locationCache.get(model);
+  if (cached && cached.version === version) return cached.map;
+
+  const map = scanDeclarationLocations(model.getValue(), getLocationPatterns(lang));
+  locationCache.set(model, { version, map });
+  return map;
+}
+
+function toLocations(monacoNS, model, entries) {
+  return entries.map(({ offset, length }) => {
+    const start = model.getPositionAt(offset);
+    const end = model.getPositionAt(offset + length);
+    return {
+      uri: model.uri,
+      range: {
+        startLineNumber: start.lineNumber, startColumn: start.column,
+        endLineNumber: end.lineNumber, endColumn: end.column,
+      },
+    };
+  });
+}
+
+export function setupDefinitionProvider(monacoNS) {
+  const SEMANTIC_LANGS = new Set(['javascript', 'typescript']);
+
+  Object.keys(LANGUAGE_PATTERNS).forEach((lang) => {
+    monacoNS.languages.registerDefinitionProvider(lang, {
+      provideDefinition(model, position) {
+        const wordInfo = model.getWordAtPosition(position);
+        if (!wordInfo) return null;
+
+        // PHP variables are stored with their `$`; Monaco's word may or
+        // may not include it depending on the language configuration.
+        const candidates = lang === 'php' && !wordInfo.word.startsWith('$')
+          ? [wordInfo.word, `$${wordInfo.word}`]
+          : [wordInfo.word];
+
+        const find = (m) => {
+          const map = getLocationsForModel(m, lang);
+          for (const name of candidates) {
+            if (map.has(name)) return map.get(name);
+          }
+          return null;
+        };
+
+        // 1) This file's own declarations win (same rule as completion).
+        //    JS/TS are skipped here: Monaco's TypeScript service already
+        //    resolves same-file symbols with real scoping, and returning
+        //    ours too would only risk a duplicate entry.
+        if (!SEMANTIC_LANGS.has(lang)) {
+          const own = find(model);
+          if (own) return toLocations(monacoNS, model, own);
+        } else if (find(model)) {
+          return null;
+        }
+
+        // 2) Otherwise look in the other OPEN files of the same language
+        //    (the scanner has always been scoped to open files).
+        const results = [];
+        for (const file of AppState.openFiles.values()) {
+          if (!file.model || file.model === model || file.language !== lang) continue;
+          const found = find(file.model);
+          if (found) results.push(...toLocations(monacoNS, file.model, found));
+        }
+        return results.length ? results : null;
+      },
+    });
+  });
+}

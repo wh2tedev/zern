@@ -12,14 +12,14 @@ function ensureContainer() {
 
 function getIconForType(type) {
   switch (type) {
-    case 'success': return '<i class="codicon codicon-pass-filled" style="color:#89d185;"></i>';
-    case 'error': return '<i class="codicon codicon-error" style="color:#f14c4c;"></i>';
-    case 'warning': return '<i class="codicon codicon-warning" style="color:#cca700;"></i>';
-    default: return '<i class="codicon codicon-info" style="color:#3794ff;"></i>';
+    case 'success': return '<i class="zi zi-pass-filled" style="color:#89d185;"></i>';
+    case 'error': return '<i class="zi zi-error" style="color:#f14c4c;"></i>';
+    case 'warning': return '<i class="zi zi-warning" style="color:#cca700;"></i>';
+    default: return '<i class="zi zi-info" style="color:#3794ff;"></i>';
   }
 }
 
-export function showToast({ type = 'info', title, message, timeout = 4000, actionLabel, onAction }) {
+export function showToast({ type = 'info', title, message, timeout = 4000, actionLabel, onAction, secondaryLabel, onSecondary }) {
   const cont = ensureContainer();
   if (!cont) return null;
 
@@ -59,9 +59,17 @@ export function showToast({ type = 'info', title, message, timeout = 4000, actio
     toast.appendChild(btn);
   }
 
+  if (secondaryLabel && typeof onSecondary === 'function') {
+    const btn2 = document.createElement('button');
+    btn2.className = 'toast-action toast-action-secondary';
+    btn2.textContent = secondaryLabel;
+    btn2.addEventListener('click', () => { onSecondary(); dismiss(); });
+    toast.appendChild(btn2);
+  }
+
   const closeBtn = document.createElement('button');
   closeBtn.className = 'toast-close';
-  closeBtn.innerHTML = '<i class="codicon codicon-close"></i>';
+  closeBtn.innerHTML = '<i class="zi zi-close"></i>';
   closeBtn.addEventListener('click', dismiss);
   toast.appendChild(closeBtn);
 

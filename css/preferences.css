@@ -1,0 +1,38 @@
+/* ============================================================
+   preferences.css - Keyboard Shortcuts and settings.json screens
+   ============================================================ */
+.pref-overlay { position: fixed; inset: 0; z-index: 4500; display: none; align-items: flex-start; justify-content: center; padding-top: 7vh; background: rgba(0,0,0,.45); }
+.pref-overlay.open { display: flex; }
+.pref-panel { width: min(860px, 94vw); max-height: 84vh; display: flex; flex-direction: column; background: var(--vscode-bg); color: var(--vscode-text); border: 1px solid var(--vscode-border); border-radius: 10px; box-shadow: 0 24px 70px rgba(0,0,0,.5); overflow: hidden; }
+.pref-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--vscode-border); font-weight: 600; font-size: 14px; }
+.pref-head-actions { display: flex; gap: 6px; align-items: center; }
+.pref-head-actions button { height: 26px; padding: 0 11px; background: transparent; color: var(--vscode-text); border: 1px solid var(--vscode-border); border-radius: 4px; font: 12px inherit; cursor: pointer; }
+.pref-head-actions button:hover { background: var(--vscode-hover-bg); }
+.pref-head-actions [data-a=close] { width: 26px; padding: 0; border-color: transparent; }
+.pref-search { padding: 10px 16px 6px; }
+.pref-search input { width: 100%; height: 30px; padding: 0 10px; background: var(--vscode-sidebar-bg); color: var(--vscode-text); border: 1px solid var(--vscode-border); border-radius: 5px; font: inherit; font-size: 13px; outline: none; }
+.pref-search input:focus { border-color: var(--vscode-accent); }
+.pref-table-head, .pref-row { display: grid; grid-template-columns: 1fr 230px 64px; align-items: center; gap: 10px; padding: 0 16px; }
+.pref-table-head { height: 26px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--vscode-text-dim); border-bottom: 1px solid var(--vscode-border); }
+.pref-list { flex: 1; overflow-y: auto; min-height: 120px; }
+.pref-row { min-height: 40px; border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 60%, transparent); }
+.pref-row:hover { background: var(--vscode-hover-bg); }
+.pref-row.modified .pref-label::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: var(--vscode-accent); vertical-align: middle; }
+.pref-row.editing { background: var(--vscode-hover-bg); }
+.pref-cmd { display: flex; flex-direction: column; min-width: 0; padding: 5px 0; }
+.pref-label { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pref-id { font: 11px ui-monospace, Consolas, monospace; color: var(--vscode-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pref-key { display: flex; gap: 4px; align-items: center; min-height: 28px; padding: 0 8px; background: transparent; border: 1px solid transparent; border-radius: 5px; color: var(--vscode-text); cursor: pointer; text-align: left; font: inherit; }
+.pref-key:hover { border-color: var(--vscode-border); }
+.pref-row.editing .pref-key { border-color: var(--vscode-accent); background: var(--vscode-bg); }
+.pref-key kbd { font: 11.5px ui-monospace, Consolas, monospace; padding: 2px 6px; border: 1px solid var(--vscode-border); border-bottom-width: 2px; border-radius: 4px; background: var(--vscode-sidebar-bg); }
+.pref-capture { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--vscode-text-dim); }
+.pref-none { font-size: 12px; color: var(--vscode-text-dim); }
+.pref-actions { display: flex; gap: 2px; justify-content: flex-end; }
+.pref-actions button { width: 26px; height: 26px; background: none; border: 0; border-radius: 4px; color: var(--vscode-text-dim); cursor: pointer; opacity: 0; }
+.pref-row:hover .pref-actions button, .pref-row.editing .pref-actions button { opacity: 1; }
+.pref-actions button:hover { background: var(--vscode-hover-bg); color: var(--vscode-text); }
+.pref-msg { grid-column: 1 / -1; padding: 0 0 8px; font-size: 12px; color: #e5a03a; }
+.pref-empty { padding: 24px 16px; color: var(--vscode-text-dim); font-size: 13px; }
+.pref-foot { padding: 9px 16px; border-top: 1px solid var(--vscode-border); font-size: 12px; color: var(--vscode-text-dim); }
+@media (max-width: 700px) { .pref-overlay { padding-top: 0; } .pref-panel { width: 100vw; height: 100vh; max-height: none; border-radius: 0; } .pref-table-head, .pref-row { grid-template-columns: 1fr 150px 50px; } }

@@ -13,9 +13,10 @@ export const THEMES = {
   'light-plus': { label: 'Light+ (Classic)', monaco: 'vscode-light-plus', dark: false, swatch: ['#ffffff', '#2c2c2c', '#007acc', '#a31515'] },
   'monokai': { label: 'Monokai', monaco: 'monokai', dark: true, swatch: ['#272822', '#1e1f1c', '#a6e22e', '#e6db74'] },
   'purple': { label: 'Purple (Soft)', monaco: 'vscode-purple', dark: true, swatch: ['#1e1729', '#1a1523', '#a78bfa', '#f0abfc'] },
+  'nordic': { label: 'Nordic', monaco: 'vscode-nordic', dark: true, swatch: ['#2e3440', '#272c36', '#88c0d0', '#a3be8c'] },
 };
 
-export const THEME_ORDER = ['dark-2026', 'dark-modern', 'dark-plus', 'light-modern', 'light-plus', 'monokai', 'purple'];
+export const THEME_ORDER = ['dark-2026', 'dark-modern', 'dark-plus', 'light-modern', 'light-plus', 'monokai', 'purple', 'nordic'];
 
 export const DEFAULT_THEME = 'dark-2026';
 

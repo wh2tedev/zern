@@ -1,0 +1,95 @@
+{
+  "id": "zern.html-preview",
+  "name": "html-preview",
+  "displayName": "HTML Preview",
+  "publisher": "Zern",
+  "version": "1.2.1",
+  "description": "Real, live preview of your HTML next to the editor, with console and responsive sizes.",
+  "icon": "icon.svg",
+  "categories": [
+    "Visualization",
+    "Web"
+  ],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "recommend": {
+    "fileExtensions": [
+      "html",
+      "htm"
+    ],
+    "message": "Preview this page live next to your code."
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "htmlPreview.open",
+        "title": "HTML Preview: Open Preview to the Side",
+        "keybinding": "Ctrl+Alt+V"
+      },
+      {
+        "command": "htmlPreview.reload",
+        "title": "HTML Preview: Reload Preview"
+      },
+      {
+        "command": "htmlPreview.close",
+        "title": "HTML Preview: Close Preview"
+      }
+    ],
+    "statusBar": [
+      {
+        "text": "Preview",
+        "tooltip": "Open HTML Preview (visible on .html files)"
+      }
+    ],
+    "sidePanels": [
+      {
+        "title": "HTML Preview",
+        "description": "Live preview with address bar, device sizes and console"
+      }
+    ],
+    "settings": [
+      {
+        "key": "autoReload",
+        "type": "boolean",
+        "title": "Auto reload",
+        "description": "Refresh the preview while you type, including unsaved changes.",
+        "default": true
+      },
+      {
+        "key": "reloadDelay",
+        "type": "number",
+        "title": "Reload delay (ms)",
+        "description": "How long to wait after typing before refreshing the preview.",
+        "default": 300,
+        "min": 100,
+        "max": 2000
+      },
+      {
+        "key": "defaultDevice",
+        "type": "enum",
+        "title": "Default screen size",
+        "description": "Size used when the preview opens.",
+        "default": "responsive",
+        "options": [
+          {
+            "value": "responsive",
+            "label": "Responsive"
+          },
+          {
+            "value": "mobile",
+            "label": "Mobile (375)"
+          },
+          {
+            "value": "tablet",
+            "label": "Tablet (768)"
+          },
+          {
+            "value": "desktop",
+            "label": "Desktop (1280)"
+          }
+        ]
+      }
+    ]
+  }
+}

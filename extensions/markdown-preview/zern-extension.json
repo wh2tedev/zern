@@ -1,0 +1,27 @@
+{
+  "id": "zern.markdown-preview",
+  "name": "markdown-preview",
+  "displayName": "Markdown Preview",
+  "publisher": "Zern",
+  "version": "1.0.0",
+  "description": "Live preview of your Markdown next to the editor, with scroll sync.",
+  "icon": "icon.svg",
+  "categories": ["Visualization", "Writing"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "recommend": { "fileExtensions": ["md", "markdown"], "message": "Preview this Markdown file next to your text." },
+  "contributes": {
+    "commands": [
+      { "command": "markdownPreview.open", "title": "Markdown Preview: Open Preview to the Side", "keybinding": "Ctrl+Alt+M" },
+      { "command": "markdownPreview.close", "title": "Markdown Preview: Close Preview" }
+    ],
+    "settings": [
+      { "key": "syncScroll", "type": "boolean", "title": "Sync scroll", "description": "Scroll the preview along with the editor.", "default": true },
+      { "key": "fontSize", "type": "number", "title": "Font size", "description": "Text size of the preview, in pixels.", "default": 15, "min": 12, "max": 24 },
+      { "key": "refreshDelay", "type": "number", "title": "Refresh delay (ms)", "description": "How long to wait after typing before refreshing the preview.", "default": 250, "min": 100, "max": 2000 }
+    ],
+    "statusBar": [{ "text": "Preview", "tooltip": "Open Markdown Preview (visible on .md files)" }],
+    "sidePanels": [{ "title": "Markdown Preview", "description": "Rendered Markdown that follows your edits" }]
+  }
+}

@@ -15,9 +15,12 @@ export const AppState = {
     lineHeight: 0, // 0 = automatic, based on font size
     formatOnSave: false,
     bracketPairColorization: true,
+    autoCloseTags: true,
+    semanticValidation: false,
     smoothScrolling: false,
     renderWhitespace: 'selection',
     uiFont: 'system',
+    keybindings: {}, // custom shortcuts: { commandId: 'Ctrl+K' | null } (see keybindings.js)
   },
 
   openFiles: new Map(),
@@ -45,6 +48,9 @@ export const AppState = {
       }
     ]
   },
+
+  // Active GitHub repository workspace (null = scratch virtual project / real folder)
+  github: null,
 
   editorInstance: null,
   autoSaveTimer: null,
@@ -80,6 +86,9 @@ export function removeOpenFile(path) {
   if (file && file.imageUrl) {
     URL.revokeObjectURL(file.imageUrl);
   }
+  // Diff tabs own the baseline model (the working-tree side is the file's own model)
+  if (file && file.baseModel) file.baseModel.dispose();
+  if (file && file.emptyModel) file.emptyModel.dispose();
   AppState.openFiles.delete(path);
 
   if (AppState.activeFilePath === path) {
@@ -147,4 +156,6 @@ export function saveConfig() {
   } catch (e) {
     console.warn('Could not save configuration:', e);
   }
+  // Lets open views (e.g. the settings.json tab) stay in sync with changes made elsewhere
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('zern:config-changed'));
 }

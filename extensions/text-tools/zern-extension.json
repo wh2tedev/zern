@@ -1,0 +1,39 @@
+{
+  "id": "zern.text-tools",
+  "name": "text-tools",
+  "displayName": "Text Tools",
+  "publisher": "Zern",
+  "version": "1.0.0",
+  "description": "Change case, sort and clean lines, encode and decode text, and insert UUIDs, dates and lorem ipsum.",
+  "icon": "icon.svg",
+  "categories": ["Formatters", "Productivity"],
+  "main": "main.js",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "contributes": {
+    "commands": [
+      { "command": "textTools.transform", "title": "Text Tools: Transform Selection…" },
+      { "command": "textTools.uppercase", "title": "Text Tools: To UPPERCASE" },
+      { "command": "textTools.lowercase", "title": "Text Tools: To lowercase" },
+      { "command": "textTools.titleCase", "title": "Text Tools: To Title Case" },
+      { "command": "textTools.sortAsc", "title": "Text Tools: Sort Lines Ascending" },
+      { "command": "textTools.sortDesc", "title": "Text Tools: Sort Lines Descending" },
+      { "command": "textTools.unique", "title": "Text Tools: Remove Duplicate Lines" },
+      { "command": "textTools.trim", "title": "Text Tools: Trim Trailing Whitespace" },
+      { "command": "textTools.base64Encode", "title": "Text Tools: Base64 Encode" },
+      { "command": "textTools.base64Decode", "title": "Text Tools: Base64 Decode" },
+      { "command": "textTools.urlEncode", "title": "Text Tools: URL Encode" },
+      { "command": "textTools.urlDecode", "title": "Text Tools: URL Decode" },
+      { "command": "textTools.insertUuid", "title": "Text Tools: Insert UUID" },
+      { "command": "textTools.insertLorem", "title": "Text Tools: Insert Lorem Ipsum" },
+      { "command": "textTools.insertDate", "title": "Text Tools: Insert Current Date" }
+    ],
+    "menus": {
+      "editor/context": [{ "command": "textTools.transform", "when": "editorHasSelection" }]
+    },
+    "settings": [
+      { "key": "loremParagraphs", "type": "number", "title": "Lorem ipsum paragraphs", "description": "How many paragraphs \"Insert Lorem Ipsum\" adds.", "default": 1, "min": 1, "max": 10 },
+      { "key": "dateFormat", "type": "enum", "title": "Date format", "description": "Format used by \"Insert Current Date\".", "default": "date", "options": [{ "value": "date", "label": "2026-10-17" }, { "value": "datetime", "label": "2026-10-17 14:30" }, { "value": "iso", "label": "ISO 8601 (UTC)" }, { "value": "locale", "label": "Your regional format" }] }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 // ============================================================
 // context-menu.js - Generic VS Code-style context menu
 // ============================================================
+import { escapeHtml } from './escape.js';
 
 let menuEl = null;
 
@@ -24,8 +25,16 @@ export function showContextMenu(x, y, items) {
       return;
     }
     const li = document.createElement('li');
-    li.className = 'context-menu-item' + (item.danger ? ' danger' : '');
-    li.innerHTML = `<span class="cm-icon">${item.icon || ''}</span><span class="cm-label">${item.label}</span>${item.keybinding ? `<span class="cm-key">${item.keybinding}</span>` : ''}`;
+    li.className = 'context-menu-item' + (item.danger ? ' danger' : '') + (item.disabled ? ' disabled' : '');
+    li.innerHTML = `<span class="cm-icon">${item.icon || ''}</span><span class="cm-label">${escapeHtml(item.label)}</span>${item.keybinding ? `<span class="cm-key">${escapeHtml(item.keybinding)}</span>` : ''}`;
+    if (item.disabled) {
+      // Disabled entries are shown greyed out; clicking them does nothing
+      // (and keeps the menu open, like native menus do).
+      li.setAttribute('aria-disabled', 'true');
+      li.addEventListener('click', (e) => e.stopPropagation());
+      menuEl.appendChild(li);
+      return;
+    }
     li.addEventListener('click', () => {
       closeContextMenu();
       item.action && item.action();

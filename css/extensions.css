@@ -1,0 +1,131 @@
+/* ============================================================
+   extensions.css - Extensions view, details page, right side panel
+   ============================================================ */
+
+/* ---------- Side bar list ---------- */
+.ext-content { display: flex; flex-direction: column; }
+.ext-search { padding: 8px 12px; }
+.ext-search input {
+  width: 100%; height: 26px; padding: 0 8px; border-radius: 2px;
+  background: var(--vscode-bg); color: var(--vscode-text);
+  border: 1px solid var(--vscode-border); font: inherit; font-size: 13px; outline: none;
+}
+.ext-search input:focus { border-color: var(--vscode-accent); }
+.ext-group-head {
+  display: flex; align-items: center; gap: 4px; width: 100%; padding: 4px 8px;
+  background: none; border: 0; color: var(--vscode-text); font: 700 11px/1.4 inherit; letter-spacing: .04em; cursor: pointer; text-align: left;
+}
+.ext-group-head:hover { background: var(--vscode-hover-bg); }
+.ext-count { margin-left: auto; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--vscode-accent); color: #fff; font-size: 10px; text-align: center; line-height: 16px; }
+.ext-empty { padding: 10px 16px; color: var(--vscode-text-dim); font-size: 12px; }
+.ext-item { display: flex; gap: 10px; padding: 8px 12px; cursor: pointer; outline: none; }
+.ext-item:hover { background: var(--vscode-hover-bg); }
+.ext-item:focus-visible { box-shadow: inset 0 0 0 1px var(--vscode-accent); }
+.ext-item.is-disabled .ext-icon, .ext-item.is-disabled .ext-name { opacity: .55; }
+.ext-icon { width: 42px; height: 42px; border-radius: 8px; flex: none; }
+.ext-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ext-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.ext-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-ver { font-size: 11px; color: var(--vscode-text-dim); flex: none; }
+.ext-desc { font-size: 12px; color: var(--vscode-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-pub { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--vscode-text-dim); min-width: 0; }
+.ext-verified { color: #3794ff; font-size: 13px; }
+.ext-verified.lg { font-size: 16px; vertical-align: -2px; margin-left: 4px; }
+.ext-tag { margin-left: 6px; padding: 0 5px; border: 1px solid var(--vscode-border); border-radius: 3px; font-size: 10px; }
+.ext-btn {
+  background: var(--vscode-accent); color: #fff; border: 0; border-radius: 2px; padding: 0 10px; height: 22px;
+  font: 12px/22px inherit; cursor: pointer; flex: none;
+}
+.ext-btn:hover { background: var(--vscode-accent-hover); }
+.ext-btn.secondary { background: transparent; color: var(--vscode-text); box-shadow: inset 0 0 0 1px var(--vscode-border); }
+.ext-btn.secondary:hover { background: var(--vscode-hover-bg); }
+.ext-btn.lg { height: 28px; padding: 0 16px; font-size: 13px; line-height: 28px; border-radius: 3px; }
+.ext-gear { background: none; border: 0; color: var(--vscode-text-dim); cursor: pointer; width: 24px; height: 22px; border-radius: 3px; flex: none; }
+.ext-gear:hover { background: var(--vscode-hover-bg); color: var(--vscode-text); }
+
+/* ---------- Details page (covers the editor area) ---------- */
+.ext-page-host { position: absolute; inset: 0; z-index: 6; display: none; flex-direction: column; background: var(--vscode-bg); color: var(--vscode-text); }
+.ext-page-host.visible { display: flex; }
+.ext-page-tab { height: 35px; flex: none; display: flex; background: var(--vscode-tab-bg); border-bottom: 1px solid var(--vscode-tab-border); }
+.ext-page-tabitem { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 13px; background: var(--vscode-tab-active-bg); box-shadow: inset 0 1px 0 var(--vscode-accent); }
+.ext-page-tabitem button { background: none; border: 0; color: var(--vscode-text-dim); cursor: pointer; width: 20px; height: 20px; border-radius: 4px; }
+.ext-page-tabitem button:hover { background: var(--vscode-hover-bg); color: var(--vscode-text); }
+.ext-page-scroll { flex: 1; overflow-y: auto; }
+.ext-hero { display: flex; gap: 24px; padding: 28px 32px 20px; max-width: 1100px; margin: 0 auto; }
+.ext-hero-icon { width: 128px; height: 128px; border-radius: 22px; flex: none; }
+.ext-hero-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ext-hero h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+.ext-hero-ver { font-size: 14px; font-weight: 400; color: var(--vscode-text-dim); }
+.ext-hero-meta { font-size: 13px; color: var(--vscode-text-dim); }
+.ext-hero-meta em { font-style: normal; color: #3794ff; margin-left: 2px; }
+.ext-hero-desc { margin: 4px 0 8px; font-size: 14px; line-height: 1.5; }
+.ext-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ext-state { margin: 6px 0 0; font-size: 12px; color: var(--vscode-text-dim); }
+.ext-tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto; padding: 0 32px; border-bottom: 1px solid var(--vscode-border); position: sticky; top: 0; background: var(--vscode-bg); z-index: 1; }
+.ext-tabs button { background: none; border: 0; border-bottom: 1px solid transparent; margin-bottom: -1px; padding: 8px 12px; color: var(--vscode-text-dim); font: 13px/1.4 inherit; text-transform: uppercase; letter-spacing: .03em; cursor: pointer; }
+.ext-tabs button:hover { color: var(--vscode-text); }
+.ext-tabs button.active { color: var(--vscode-text); border-bottom-color: var(--vscode-accent); }
+.ext-cols { display: flex; gap: 40px; max-width: 1100px; margin: 0 auto; padding: 8px 32px 56px; align-items: flex-start; }
+.ext-doc { flex: 1; min-width: 0; font-size: 14px; line-height: 1.65; }
+.ext-doc h1 { font-size: 24px; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--vscode-border); }
+.ext-doc h2 { font-size: 19px; margin: 24px 0 8px; }
+.ext-doc h3 { font-size: 16px; margin: 18px 0 6px; }
+.ext-doc p, .ext-doc ul, .ext-doc ol, .ext-doc pre, .ext-doc table, .ext-doc blockquote { margin: 0 0 12px; }
+.ext-doc ul, .ext-doc ol { padding-left: 24px; }
+.ext-doc li { margin: 3px 0; }
+.ext-doc a { color: #3794ff; }
+.ext-doc code, .ext-side code { font: 12.5px/1 ui-monospace, Consolas, monospace; padding: 2px 5px; border-radius: 3px; background: var(--vscode-hover-bg); }
+.ext-doc pre { padding: 12px 14px; border-radius: 6px; background: var(--vscode-sidebar-bg); border: 1px solid var(--vscode-border); overflow-x: auto; }
+.ext-doc pre code { padding: 0; background: none; line-height: 1.5; }
+.ext-doc blockquote { padding: 6px 14px; border-left: 3px solid var(--vscode-accent); background: var(--vscode-hover-bg); }
+.ext-doc table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.ext-doc th, .ext-doc td { text-align: left; padding: 6px 10px; border: 1px solid var(--vscode-border); }
+.ext-doc th { background: var(--vscode-sidebar-bg); }
+.ext-doc kbd { font: 12px/1 ui-monospace, Consolas, monospace; padding: 2px 6px; border: 1px solid var(--vscode-border); border-bottom-width: 2px; border-radius: 4px; }
+.ext-doc img { max-width: 100%; }
+.ext-side { width: 250px; flex: none; font-size: 13px; padding-top: 8px; }
+.ext-side h3 { margin: 16px 0 6px; font-size: 14px; font-weight: 600; }
+.ext-side h3:first-child { margin-top: 4px; }
+.ext-side dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+.ext-side dt { color: var(--vscode-text-dim); } .ext-side dd { margin: 0; text-align: right; word-break: break-all; }
+.ext-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ext-chips span { padding: 2px 9px; border-radius: 10px; background: var(--vscode-hover-bg); font-size: 12px; }
+
+/* ---------- Right side panel docked next to the editor ---------- */
+.editor-row { flex: 1; display: flex; min-height: 0; }
+.editor-col { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.editor-aside { width: 46%; min-width: 280px; display: flex; flex-direction: column; background: var(--vscode-bg); border-left: 1px solid var(--vscode-border); }
+.editor-aside[hidden], .aside-resizer[hidden], .aside-panel[hidden] { display: none; }
+.aside-resizer { width: 4px; margin-left: -2px; cursor: col-resize; flex: none; z-index: 3; }
+.aside-resizer:hover, body.aside-resizing .aside-resizer { background: var(--vscode-accent); }
+body.aside-resizing { user-select: none; cursor: col-resize; }
+body.aside-resizing iframe { pointer-events: none; }
+.aside-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.aside-head { height: 35px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 14px; background: var(--vscode-tab-bg); border-bottom: 1px solid var(--vscode-tab-border); font-size: 12px; }
+.aside-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aside-close { background: none; border: 0; color: var(--vscode-text-dim); cursor: pointer; width: 24px; height: 24px; border-radius: 4px; }
+.aside-close:hover { background: var(--vscode-hover-bg); color: var(--vscode-text); }
+.aside-body { flex: 1; min-height: 0; }
+
+@media (max-width: 900px) { .ext-cols { flex-direction: column; gap: 8px; } .ext-side { width: auto; } .ext-hero { flex-direction: column; padding: 20px; } .ext-hero-icon { width: 80px; height: 80px; } .ext-tabs, .ext-cols { padding-left: 20px; padding-right: 20px; } }
+@media (max-width: 600px) { .editor-row { position: relative; } .editor-aside { position: absolute; inset: 0; width: auto !important; z-index: 5; } .aside-resizer { display: none; } }
+
+/* ---------- Toast: secondary action ---------- */
+.toast-action-secondary { background: transparent !important; color: var(--vscode-text) !important; box-shadow: inset 0 0 0 1px var(--vscode-border); }
+.toast-action-secondary:hover { background: var(--vscode-hover-bg) !important; }
+
+/* ---------- Update notice + settings tab ---------- */
+.ext-tag.updated { color: #fff; background: var(--vscode-accent); border-color: transparent; }
+.ext-notice { display: flex; align-items: center; gap: 10px; max-width: 1100px; margin: 0 auto 4px; padding: 9px 14px; font-size: 13px; background: var(--vscode-hover-bg); border-left: 3px solid var(--vscode-accent); }
+.ext-notice span { flex: 1; }
+.ext-notice a { color: #3794ff; cursor: pointer; text-decoration: underline; }
+.ext-notice button { background: none; border: 0; color: var(--vscode-text-dim); cursor: pointer; font: inherit; }
+.ext-notice button:hover { color: var(--vscode-text); }
+.ext-setting { padding: 12px 0; border-bottom: 1px solid var(--vscode-border); }
+.ext-setting:last-child { border-bottom: 0; }
+.ext-setting label { display: block; font-weight: 600; font-size: 13.5px; }
+.ext-setting p { margin: 2px 0 8px; font-size: 12.5px; color: var(--vscode-text-dim); }
+.ext-setting input[type=number], .ext-setting input[type=text], .ext-setting select { height: 26px; min-width: 160px; padding: 0 8px; background: var(--vscode-bg); color: var(--vscode-text); border: 1px solid var(--vscode-border); border-radius: 2px; font: inherit; font-size: 13px; }
+.ext-setting input:focus, .ext-setting select:focus { outline: 1px solid var(--vscode-accent); border-color: var(--vscode-accent); }
+.ext-setting .ext-check { display: flex; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; }
+.ext-setting .ext-reset { margin-left: 10px; font-size: 12px; color: #3794ff; background: none; border: 0; cursor: pointer; text-decoration: underline; }

@@ -18,7 +18,7 @@
   .activity-btn {
     height: 56px;
   }
-  .activity-btn .codicon {
+  .activity-btn .zi {
     font-size: 24px !important;
   }
 
@@ -58,13 +58,13 @@
   .indent-guide {
     height: 40px;
   }
-  .explorer-icon .codicon,
-  .explorer-icon .folder-codicon,
+  .explorer-icon .zi,
+  .explorer-icon .folder-zi,
   .file-icon-img {
     width: 20px !important;
     height: 20px !important;
   }
-  .explorer-twisty .codicon {
+  .explorer-twisty .zi {
     font-size: 16px !important;
   }
   .explorer-label {
@@ -75,7 +75,7 @@
   .side-bar-actions button {
     padding: 6px;
   }
-  .side-bar-actions .codicon {
+  .side-bar-actions .zi {
     font-size: 18px !important;
   }
 
@@ -174,7 +174,7 @@
   .image-zoom-btn {
     padding: 8px;
   }
-  .image-zoom-btn .codicon {
+  .image-zoom-btn .zi {
     font-size: 17px !important;
   }
 }

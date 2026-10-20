@@ -27,6 +27,7 @@ body[data-theme="dark-2026"] {
   --vscode-hover-bg: #1d3e4b;
   --vscode-selected-bg: #284a59;
   --vscode-scrollbar: #4a4a4a;
+  --vscode-statusbar-border: #2b2c2d;
 }
 
 /* ---------- Dark Modern ---------- */
@@ -50,6 +51,7 @@ body[data-theme="dark-modern"] {
   --vscode-hover-bg: #2a2d2e;
   --vscode-selected-bg: #04395e;
   --vscode-scrollbar: #424242;
+  --vscode-statusbar-border: #2b2b2b;
 }
 
 /* ---------- Dark+ (classic) ---------- */
@@ -170,4 +172,27 @@ body[data-theme="purple"] {
   --vscode-hover-bg: #2c2438;
   --vscode-selected-bg: #3d3151;
   --vscode-scrollbar: #4a3f61;
+}
+
+/* ---------- Nordic (arctic blue-grey, Nord-inspired palette) ---------- */
+body[data-theme="nordic"] {
+  --vscode-bg: #2e3440;
+  --vscode-sidebar-bg: #272c36;
+  --vscode-activitybar-bg: #272c36;
+  --vscode-activitybar-fg: #eceff4;
+  --vscode-activitybar-inactive: #7b88a1;
+  --vscode-titlebar-bg: #272c36;
+  --vscode-tab-bg: #272c36;
+  --vscode-tab-active-bg: #2e3440;
+  --vscode-tab-border: #272c36;
+  --vscode-border: #3b4252;
+  --vscode-text: #d8dee9;
+  --vscode-text-dim: #7b88a1;
+  --vscode-accent: #5e81ac;
+  --vscode-accent-hover: #81a1c1;
+  --vscode-statusbar-bg: #3b4252;
+  --vscode-statusbar-fg: #d8dee9;
+  --vscode-hover-bg: #3b4252;
+  --vscode-selected-bg: #434c5e;
+  --vscode-scrollbar: #4c566a;
 }
